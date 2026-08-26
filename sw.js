@@ -1,4 +1,4 @@
-const CACHE_NAME = 'legio-xiii-v1';
+const CACHE_NAME = 'legio-xiii-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const isPage = event.request.mode === 'navigate' || event.request.destination === 'document';
+
+  if(isPage){
+    // Network-first for the app itself: always get the latest version when online,
+    // fall back to the cached copy only when there's no connection.
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest) — these rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
