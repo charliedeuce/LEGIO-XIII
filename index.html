@@ -500,6 +500,14 @@
   <div id="log-panel">
     <h2>Quick update</h2>
     <select id="quick-unit"></select>
+    <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 4px;">Status</label>
+    <select id="quick-status">
+      <option value="">No change</option>
+      <option value="available">Available</option>
+      <option value="assigned">Assigned</option>
+      <option value="enroute">En route</option>
+      <option value="oos">Out of service</option>
+    </select>
     <input id="quick-location" placeholder="New location (blank = no change)" style="margin-top:8px;">
     <input id="quick-assignment" placeholder="New assignment (blank = no change)" style="margin-top:8px;">
     <button class="primary" id="quick-update-btn" style="margin-top:8px;width:100%;">Update unit</button>
@@ -741,9 +749,11 @@ function renderQuickUnitOptions(){
 
 function quickUpdate(){
   const sel = document.getElementById('quick-unit');
+  const statusEl = document.getElementById('quick-status');
   const locEl = document.getElementById('quick-location');
   const assignEl = document.getElementById('quick-assignment');
   const id = sel.value;
+  const newStatus = statusEl.value;
   const newLoc = locEl.value.trim();
   const newAssign = assignEl.value.trim();
 
@@ -751,13 +761,17 @@ function quickUpdate(){
     alert('No unit selected.');
     return;
   }
-  if(!newLoc && !newAssign){
-    alert('Enter a new location or assignment first.');
+  if(!newStatus && !newLoc && !newAssign){
+    alert('Choose a status or enter a new location/assignment first.');
     return;
   }
 
   const u = units.find(u => u.id === id);
   const changes = [];
+  if(newStatus && newStatus !== u.status){
+    changes.push(`status ${statusLabel[u.status]} -> ${statusLabel[newStatus]}`);
+    u.status = newStatus;
+  }
   if(newLoc && newLoc !== u.location){
     changes.push(`location -> ${newLoc}`);
     u.location = newLoc;
@@ -772,6 +786,7 @@ function quickUpdate(){
   }
   u.updated = nowStr();
   addLog(`${u.callsign}: ${changes.join(', ')}.`);
+  statusEl.value = '';
   locEl.value = '';
   assignEl.value = '';
   save();
@@ -780,10 +795,7 @@ function quickUpdate(){
 
 function stationOptionsHtml(){
   let html = '<option value="">— Select —</option>';
-  html += `<option value="__dispatch__">Dispatch (${(function(){ 
-    const h1 = document.querySelector('header h1'); 
-    return h1 ? h1.textContent : 'Legio XIII'; 
-  })()})</option>`;
+  html += `<option value="__dispatch__">Dispatch</option>`;
   units.forEach(u => {
     html += `<option value="${u.id}">${escapeHtml(u.callsign)} — ${statusLabel[u.status]}</option>`;
   });
