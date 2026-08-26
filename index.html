@@ -1150,7 +1150,7 @@ function drawFullHeader(page, meta){
     if(r){
       pageText(page, MARGIN+4, y+10, fitText(r.callsign || '', 210-MARGIN-8, 8, false), 8, false);
       pageText(page, 214, y+10, fitText(r.type || '', 390-210-8, 8, false), 8, false);
-      pageText(page, 394, y+10, fitText(r.status || '', RIGHT-390-8, 8, false), 8, false);
+      // Home Agency left blank intentionally — filled in by hand
     }
     y += rowH6;
   }
