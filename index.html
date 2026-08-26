@@ -351,7 +351,7 @@
     border:1px dashed var(--line);
     border-radius:6px;
   }
-  #ics-overlay{
+  #ics-overlay, #ics309-overlay{
     position:fixed;top:0;left:0;right:0;bottom:0;
     background:rgba(0,0,0,.6);
     display:none;
@@ -360,8 +360,8 @@
     z-index:50;
     padding:16px;
   }
-  #ics-overlay.show{display:flex;}
-  #ics-modal{
+  #ics-overlay.show, #ics309-overlay.show{display:flex;}
+  #ics-modal, #ics309-modal{
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:8px;
@@ -371,13 +371,13 @@
     max-height:88vh;
     overflow-y:auto;
   }
-  #ics-modal h3{
+  #ics-modal h3, #ics309-modal h3{
     margin:0 0 16px;
     font-family:var(--mono);
     font-size:16px;
     color:var(--amber);
   }
-  #ics-modal label{
+  #ics-modal label, #ics309-modal label{
     display:block;
     font-size:11px;
     text-transform:uppercase;
@@ -385,7 +385,7 @@
     color:var(--muted);
     margin:12px 0 5px;
   }
-  #ics-modal input{
+  #ics-modal input, #ics309-modal input{
     width:100%;
     background:var(--bg);
     border:1px solid var(--line);
@@ -448,9 +448,9 @@
       font-size:15px;
     }
     .modal-actions button{min-height:44px;font-size:14px;}
-    #ics-overlay{padding:16px;}
-    #ics-modal{width:100%;padding:18px;}
-    #ics-modal input{padding:12px 10px;font-size:15px;}
+    #ics-overlay, #ics309-overlay{padding:16px;}
+    #ics-modal, #ics309-modal{width:100%;padding:18px;}
+    #ics-modal input, #ics309-modal input{padding:12px 10px;font-size:15px;}
     .ics-row{flex-direction:column;}
   }
 </style>
@@ -505,8 +505,11 @@
     <button class="primary" id="quick-update-btn" style="margin-top:8px;width:100%;">Update unit</button>
 
     <h2 style="margin-top:20px;">Radio traffic</h2>
-    <select id="radio-unit"></select>
-    <input id="radio-text" placeholder="Traffic to log for this unit" style="margin-top:8px;">
+    <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 4px;">From</label>
+    <select id="radio-from"></select>
+    <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 4px;">To</label>
+    <select id="radio-to"></select>
+    <input id="radio-text" placeholder="Subject / message" style="margin-top:8px;">
     <button class="primary" id="radio-send-btn" style="margin-top:8px;width:100%;">Log traffic</button>
 
     <h2 style="margin-top:20px;">Activity log</h2>
@@ -526,6 +529,7 @@
 
     <h2 style="margin-top:20px;">Reports</h2>
     <button class="primary" id="ics214-btn" style="width:100%;">Export ICS-214 (PDF)</button>
+    <button class="primary" id="ics309-btn" style="width:100%;margin-top:8px;">Export ICS-309 (PDF)</button>
   </div>
 </main>
 
@@ -589,6 +593,29 @@
   </div>
 </div>
 
+<div id="ics309-overlay">
+  <div id="ics309-modal">
+    <h3>Export ICS-309</h3>
+    <label>Task #</label>
+    <input id="ics309-task-num" placeholder="e.g. 1">
+    <label>Task Name</label>
+    <input id="ics309-task-name" placeholder="e.g. Perimeter Patrol">
+    <div class="ics-row">
+      <div><label>Operational Period #</label><input id="ics309-op-period" placeholder="e.g. 1"></div>
+      <div><label>Station I.D.</label><input id="ics309-station-id" placeholder="e.g. Legio XIII"></div>
+    </div>
+    <label>Radio Operator Name (Logistics)</label>
+    <input id="ics309-operator" placeholder="Your name">
+    <p style="font-size:11px;color:var(--muted);margin:12px 0 0;">
+      Only entries logged as Radio Traffic will be included. Radio entries logged before this update won't have a "To" station recorded and will show blank in that column for you to fill in by hand.
+    </p>
+    <div class="modal-actions">
+      <button class="cancel" id="ics309-cancel">Cancel</button>
+      <button class="save" id="ics309-generate">Generate PDF</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'dispatch_board_units_v1';
 const LOG_KEY = 'dispatch_board_log_v1';
@@ -617,8 +644,11 @@ function save(){
   safeSet(LOG_KEY, JSON.stringify(log));
 }
 
-function addLog(text, radio){
-  log.push({t: nowStr(), text, radio: !!radio});
+function addLog(text, radio, extra){
+  const entry = { t: nowStr(), text, radio: !!radio };
+  if(extra && extra.from) entry.from = extra.from;
+  if(extra && extra.to) entry.to = extra.to;
+  log.push(entry);
   save();
   renderLog();
 }
@@ -629,6 +659,7 @@ function renderLog(){
     <div class="log-entry${e.radio ? ' radio' : ''}">
       <span class="t">[${e.t}]</span>
       ${e.radio ? '<span class="tag">Radio</span>' : ''}
+      ${e.radio && (e.from || e.to) ? `<b>${escapeHtml(e.from || '?')} &rarr; ${escapeHtml(e.to || '?')}:</b> ` : ''}
       ${escapeHtml(e.text)}
     </div>
   `).join('');
@@ -747,36 +778,58 @@ function quickUpdate(){
   renderGrid();
 }
 
-function renderRadioUnitOptions(){
-  const sel = document.getElementById('radio-unit');
-  const prev = sel.value;
-  if(units.length === 0){
-    sel.innerHTML = '<option value="">No units on board</option>';
-    sel.disabled = true;
-  } else {
-    sel.disabled = false;
-    sel.innerHTML = units.map(u =>
-      `<option value="${u.id}">${escapeHtml(u.callsign)} — ${statusLabel[u.status]}</option>`
-    ).join('');
-    if(units.some(u => u.id === prev)) sel.value = prev;
+function stationOptionsHtml(){
+  let html = '<option value="">— Select —</option>';
+  html += `<option value="__dispatch__">Dispatch (${(function(){ 
+    const h1 = document.querySelector('header h1'); 
+    return h1 ? h1.textContent : 'Legio XIII'; 
+  })()})</option>`;
+  units.forEach(u => {
+    html += `<option value="${u.id}">${escapeHtml(u.callsign)} — ${statusLabel[u.status]}</option>`;
+  });
+  return html;
+}
+
+function stationLabel(value){
+  if(!value) return '';
+  if(value === '__dispatch__'){
+    return 'Dispatch';
   }
+  const u = units.find(u => u.id === value);
+  return u ? u.callsign : '';
+}
+
+function renderRadioUnitOptions(){
+  const fromSel = document.getElementById('radio-from');
+  const toSel = document.getElementById('radio-to');
+  const prevFrom = fromSel.value;
+  const prevTo = toSel.value;
+  const html = stationOptionsHtml();
+  fromSel.innerHTML = html;
+  toSel.innerHTML = html;
+  if(prevFrom && [...fromSel.options].some(o => o.value === prevFrom)) fromSel.value = prevFrom;
+  if(prevTo && [...toSel.options].some(o => o.value === prevTo)) toSel.value = prevTo;
 }
 
 function sendRadioTraffic(){
-  const sel = document.getElementById('radio-unit');
+  const fromSel = document.getElementById('radio-from');
+  const toSel = document.getElementById('radio-to');
   const textEl = document.getElementById('radio-text');
-  const id = sel.value;
+  const fromVal = fromSel.value;
+  const toVal = toSel.value;
   const text = textEl.value.trim();
-  if(!id){
-    alert('No unit selected.');
+
+  if(!fromVal || !toVal){
+    alert('Select both a "From" and a "To" station.');
     return;
   }
   if(!text){
     alert('Enter the radio traffic first.');
     return;
   }
-  const u = units.find(u => u.id === id);
-  addLog(`${u.callsign}: "${text}"`, true);
+  const fromLabel = stationLabel(fromVal);
+  const toLabel = stationLabel(toVal);
+  addLog(`${fromLabel} -> ${toLabel}: "${text}"`, true, { from: fromLabel, to: toLabel });
   textEl.value = '';
   textEl.focus();
 }
@@ -1055,6 +1108,12 @@ function pageRect(page, x, yFromTop, w, h){
   const y = page.height - yFromTop - h;
   page.ops.push(`${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S`);
 }
+function pageFillRect(page, x, yFromTop, w, h, gray){
+  const y = page.height - yFromTop - h;
+  page.ops.push(`${gray} g`);
+  page.ops.push(`${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
+  page.ops.push('0 g');
+}
 
 function buildPDF(pages){
   const N = pages.length;
@@ -1245,6 +1304,141 @@ function generateICS214Pdf(meta, entries){
   return buildPDF(pages);
 }
 
+/* ---- ICS-309 (Communications Log) ---- */
+
+const X309_1 = 300, X309_2 = 406, X309_3 = 464;
+const COL_TIME_W = 70, COL_FROM_W = 90, COL_TO_W = 90;
+const X_TIME = MARGIN, X_FROM = MARGIN+COL_TIME_W, X_TO = MARGIN+COL_TIME_W+COL_FROM_W, X_SUBJ = MARGIN+COL_TIME_W+COL_FROM_W+COL_TO_W;
+
+function draw309Title(page){
+  const w = textWidth('COMMUNICATIONS LOG (ICS 309)', 14, true);
+  pageText(page, (PW - w)/2, 40, 'COMMUNICATIONS LOG (ICS 309)', 14, true);
+}
+
+function draw309Header(page, meta){
+  draw309Title(page);
+  const y0 = 60, y1 = 90, y2 = 110, y3 = 130;
+
+  // Row 1: label | Task # | Date/Time Prepared
+  pageRect(page, MARGIN, y0, RIGHT-MARGIN, y1-y0);
+  pageLine(page, X309_1, y0, X309_1, y1);
+  pageLine(page, X309_3, y0, X309_3, y1);
+  pageText(page, MARGIN+4, y0+18, 'COMMUNICATIONS LOG', 10, true);
+  pageText(page, X309_1+4, y0+11, 'Task #: ' + (meta.taskNum||''), 9, false);
+  pageText(page, X309_3+4, y0+11, 'Date Prepared: ' + (meta.datePrepared||''), 8, false);
+  pageText(page, X309_3+4, y0+24, 'Time Prepared: ' + (meta.timePrepared||''), 8, false);
+
+  // Row 2: Operational Period# | Task Name
+  pageRect(page, MARGIN, y1, RIGHT-MARGIN, y2-y1);
+  pageLine(page, X309_1, y1, X309_1, y2);
+  pageText(page, MARGIN+4, y1+13, 'For Operational Period #: ' + (meta.opPeriod||''), 9, false);
+  pageText(page, X309_1+4, y1+13, 'Task Name: ' + (meta.taskName||''), 9, false);
+
+  // Row 3: Radio Operator Name | Station I.D.
+  pageRect(page, MARGIN, y2, RIGHT-MARGIN, y3-y2);
+  pageLine(page, X309_2, y2, X309_2, y3);
+  pageText(page, MARGIN+4, y2+13, 'Radio Operator Name (Logistics): ' + (meta.operator||''), 9, false);
+  pageText(page, X309_2+4, y2+13, 'Station I.D.: ' + (meta.stationId||''), 9, false);
+
+  // Shaded LOG bar
+  const logBarH = 14;
+  pageFillRect(page, MARGIN, y3, RIGHT-MARGIN, logBarH, 0.85);
+  pageRect(page, MARGIN, y3, RIGHT-MARGIN, logBarH);
+  const logW = textWidth('LOG', 9, true);
+  pageText(page, (PW-logW)/2, y3+10, 'LOG', 9, true);
+
+  return y3 + logBarH;
+}
+
+function draw309TableHeader(page, y){
+  const subRowH = 14;
+  // sub-row 1: blank | STATION I.D. (merged) | blank
+  pageRect(page, MARGIN, y, RIGHT-MARGIN, subRowH);
+  pageLine(page, X_FROM, y, X_FROM, y+subRowH);
+  pageLine(page, X_SUBJ, y, X_SUBJ, y+subRowH);
+  const sidW = textWidth('STATION I.D.', 9, false);
+  pageText(page, X_FROM + (X_SUBJ-X_FROM)/2 - sidW/2, y+10, 'STATION I.D.', 9, false);
+  y += subRowH;
+
+  // sub-row 2: TIME | FROM | TO | SUBJECT
+  pageRect(page, MARGIN, y, RIGHT-MARGIN, subRowH);
+  pageLine(page, X_FROM, y, X_FROM, y+subRowH);
+  pageLine(page, X_TO, y, X_TO, y+subRowH);
+  pageLine(page, X_SUBJ, y, X_SUBJ, y+subRowH);
+  pageText(page, X_TIME + (X_FROM-X_TIME)/2 - textWidth('TIME',8,false)/2, y+10, 'TIME', 8, false);
+  pageText(page, X_FROM + (X_TO-X_FROM)/2 - textWidth('FROM',8,false)/2, y+10, 'FROM', 8, false);
+  pageText(page, X_TO + (X_SUBJ-X_TO)/2 - textWidth('TO',8,false)/2, y+10, 'TO', 8, false);
+  pageText(page, X_SUBJ + (RIGHT-X_SUBJ)/2 - textWidth('SUBJECT',8,false)/2, y+10, 'SUBJECT', 8, false);
+  y += subRowH;
+
+  return y;
+}
+
+function draw309FooterPlaceholder(page){
+  // reserved space only; text filled in after total page count is known
+}
+
+function generateICS309Pdf(meta, allEntries){
+  const entries = allEntries.filter(e => e.radio);
+  const pages = [];
+  let page = makePage(PW, PH);
+  pages.push(page);
+  let y = draw309Header(page, meta);
+  let cursorY = draw309TableHeader(page, y);
+  const footerY = PH - MARGIN - 24;
+  const rowH = 14;
+  const colWidth = (RIGHT - X_SUBJ) - 8;
+
+  function newPage(){
+    page = makePage(PW, PH);
+    pages.push(page);
+    const hy = draw309Header(page, meta);
+    cursorY = draw309TableHeader(page, hy);
+  }
+
+  entries.forEach(entry => {
+    const lines = wrapText(entry.text, colWidth, 8, false);
+    if(cursorY + lines.length*rowH > footerY){
+      newPage();
+    }
+    lines.forEach((ln, i) => {
+      pageRect(page, MARGIN, cursorY, RIGHT-MARGIN, rowH);
+      pageLine(page, X_FROM, cursorY, X_FROM, cursorY+rowH);
+      pageLine(page, X_TO, cursorY, X_TO, cursorY+rowH);
+      pageLine(page, X_SUBJ, cursorY, X_SUBJ, cursorY+rowH);
+      if(i === 0){
+        pageText(page, X_TIME+3, cursorY+10, entry.t || '', 8, false);
+        pageText(page, X_FROM+3, cursorY+10, fitText(entry.from || '', COL_FROM_W-6, 8, false), 8, false);
+        pageText(page, X_TO+3, cursorY+10, fitText(entry.to || '', COL_TO_W-6, 8, false), 8, false);
+      }
+      pageText(page, X_SUBJ+3, cursorY+10, ln, 8, false);
+      cursorY += rowH;
+    });
+  });
+
+  while(cursorY + rowH <= footerY){
+    pageRect(page, MARGIN, cursorY, RIGHT-MARGIN, rowH);
+    pageLine(page, X_FROM, cursorY, X_FROM, cursorY+rowH);
+    pageLine(page, X_TO, cursorY, X_TO, cursorY+rowH);
+    pageLine(page, X_SUBJ, cursorY, X_SUBJ, cursorY+rowH);
+    cursorY += rowH;
+  }
+
+  // Footer, now that total page count is known
+  pages.forEach((p, i) => {
+    const y0 = PH - MARGIN - 24;
+    pageLine(p, MARGIN, y0, RIGHT, y0);
+    pageText(p, MARGIN+4, y0+16, 'PAGE ' + (i+1) + ' OF ' + pages.length, 9, false);
+    pageText(p, RIGHT-80, y0+16, 'Form 309', 9, true);
+    pageLine(p, MARGIN, y0+24, RIGHT, y0+24);
+    pageLine(p, MARGIN, y0, MARGIN, y0+24);
+    pageLine(p, RIGHT, y0, RIGHT, y0+24);
+    pageLine(p, RIGHT-100, y0, RIGHT-100, y0+24);
+  });
+
+  return buildPDF(pages);
+}
+
 function openIcsModal(){
   const saved = JSON.parse(safeGet(ICS_META_KEY) || '{}');
   document.getElementById('ics-incident').value = saved.incident || '';
@@ -1292,7 +1486,57 @@ document.getElementById('ics-generate').addEventListener('click', () => {
   closeIcsModal();
 });
 
-/* ================= end ICS-214 PDF export ================= */
+/* ---- ICS-309 modal wiring ---- */
+
+const ICS309_META_KEY = 'legio_ics309_meta_v1';
+
+function openIcs309Modal(){
+  const saved = JSON.parse(safeGet(ICS309_META_KEY) || '{}');
+  document.getElementById('ics309-task-num').value = saved.taskNum || '';
+  document.getElementById('ics309-task-name').value = saved.taskName || '';
+  document.getElementById('ics309-op-period').value = saved.opPeriod || '';
+  document.getElementById('ics309-station-id').value = saved.stationId || '';
+  document.getElementById('ics309-operator').value = saved.operator || '';
+  document.getElementById('ics309-overlay').classList.add('show');
+}
+function closeIcs309Modal(){
+  document.getElementById('ics309-overlay').classList.remove('show');
+}
+
+document.getElementById('ics309-btn').addEventListener('click', openIcs309Modal);
+document.getElementById('ics309-cancel').addEventListener('click', closeIcs309Modal);
+document.getElementById('ics309-overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'ics309-overlay') closeIcs309Modal();
+});
+
+document.getElementById('ics309-generate').addEventListener('click', () => {
+  const radioCount = log.filter(e => e.radio).length;
+  if(radioCount === 0){
+    alert('No radio traffic has been logged yet — nothing to put on a communications log.');
+    return;
+  }
+  const now = new Date();
+  const meta = {
+    taskNum: document.getElementById('ics309-task-num').value.trim(),
+    taskName: document.getElementById('ics309-task-name').value.trim(),
+    opPeriod: document.getElementById('ics309-op-period').value.trim(),
+    stationId: document.getElementById('ics309-station-id').value.trim(),
+    operator: document.getElementById('ics309-operator').value.trim(),
+    datePrepared: now.toLocaleDateString('en-US'),
+    timePrepared: now.toLocaleTimeString('en-US', {hour12:false})
+  };
+  safeSet(ICS309_META_KEY, JSON.stringify(meta));
+
+  const bytes = generateICS309Pdf(meta, log);
+  const blob = new Blob([bytes], {type:'application/pdf'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ICS-309-' + new Date().toISOString().slice(0,10) + '.pdf';
+  a.click();
+  closeIcs309Modal();
+});
+
+/* ================= end ICS-214 / ICS-309 PDF export ================= */
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
