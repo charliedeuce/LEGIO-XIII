@@ -1328,8 +1328,8 @@ function drawFullHeader(page, meta){
   pageLine(page, 390, y, 390, y+rowH6);
   y += rowH6;
 
-  const resources = (meta.units || []).slice(0, 7);
-  const dataRows = 7;
+  const resources = meta.units || [];
+  const dataRows = Math.max(7, Math.min(resources.length, 40));
   for(let i=0;i<dataRows;i++){
     pageRect(page, MARGIN, y, RIGHT-MARGIN, rowH6);
     pageLine(page, 210, y, 210, y+rowH6);
@@ -1389,15 +1389,24 @@ function generateICS214Pdf(meta, entries){
   let page = makePage(PW, PH);
   pages.push(page);
   let y = drawFullHeader(page, meta);
-  let tableTop = drawActivityHeaderRow(page, y, false);
   const footerY = PH - MARGIN - 30;
   const rowH = 14;
   const colTextX = 124;
   const colWidth = RIGHT - 124 - 6;
-  let cursorY = tableTop;
-  let isFirstPage = true;
+  let cursorY;
 
   function newContinuationPage(){
+    drawFooter(page, meta, pages.length);
+    page = makePage(PW, PH);
+    pages.push(page);
+    const hy = drawContinuationHeader(page, meta);
+    cursorY = drawActivityHeaderRow(page, hy, true);
+  }
+
+  if(y + 28 <= footerY){
+    cursorY = drawActivityHeaderRow(page, y, false);
+  } else {
+    // Resources Assigned filled the whole page — start the Activity Log on the next page instead
     drawFooter(page, meta, pages.length);
     page = makePage(PW, PH);
     pages.push(page);
