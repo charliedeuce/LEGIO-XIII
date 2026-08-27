@@ -1619,7 +1619,7 @@ document.getElementById('ics-generate').addEventListener('click', () => {
   const blob = new Blob([bytes], {type:'application/pdf'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ICS-214-' + new Date().toISOString().slice(0,10) + '.pdf';
+  a.download = 'ICS-214-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.pdf';
   a.click();
   closeIcsModal();
 });
@@ -1669,7 +1669,7 @@ document.getElementById('ics309-generate').addEventListener('click', () => {
   const blob = new Blob([bytes], {type:'application/pdf'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ICS-309-' + new Date().toISOString().slice(0,10) + '.pdf';
+  a.download = 'ICS-309-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.pdf';
   a.click();
   closeIcs309Modal();
 });
