@@ -560,7 +560,7 @@
       <h2>Notable Activity</h2>
       <p id="notable-hint">Freeform, timestamped narrative — no unit required. This feeds the ICS-214 export.</p>
       <div class="toolbar" style="margin-bottom:12px;">
-        <input id="notable-text" placeholder="Narrative entry..." style="flex:1;min-width:220px;">
+        <input id="notable-text" placeholder="Narrative entry..." style="flex:1;min-width:220px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
         <button class="primary" id="notable-add-btn">Add entry</button>
         <button id="notable-clear-btn">Clear</button>
       </div>
@@ -579,8 +579,8 @@
       <option value="enroute">En route</option>
       <option value="oos">Out of service</option>
     </select>
-    <input id="quick-location" placeholder="New location (blank = no change)" style="margin-top:8px;">
-    <input id="quick-assignment" placeholder="New assignment (blank = no change)" style="margin-top:8px;">
+    <input id="quick-location" placeholder="New location (blank = no change)" style="margin-top:8px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
+    <input id="quick-assignment" placeholder="New assignment (blank = no change)" style="margin-top:8px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
     <button class="primary" id="quick-update-btn" style="margin-top:8px;width:100%;">Update unit</button>
 
     <h2 style="margin-top:20px;">Radio traffic</h2>
@@ -588,7 +588,7 @@
     <select id="radio-from"></select>
     <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 4px;">To</label>
     <select id="radio-to"></select>
-    <input id="radio-text" placeholder="Subject / message" style="margin-top:8px;">
+    <input id="radio-text" placeholder="Subject / message" style="margin-top:8px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
     <button class="primary" id="radio-send-btn" style="margin-top:8px;width:100%;">Log traffic</button>
 
     <h2 style="margin-top:20px;">Activity log</h2>
@@ -633,9 +633,9 @@
       <option value="oos">Out of service</option>
     </select>
     <label>Location</label>
-    <input id="f-location" placeholder="e.g. Cross St / 5th Ave">
+    <input id="f-location" placeholder="e.g. Cross St / 5th Ave" spellcheck="true" autocorrect="on" autocapitalize="sentences">
     <label>Assignment / task</label>
-    <input id="f-assignment" placeholder="e.g. Call #2214 - noise complaint">
+    <input id="f-assignment" placeholder="e.g. Call #2214 - noise complaint" spellcheck="true" autocorrect="on" autocapitalize="sentences">
     <div class="modal-actions">
       <button class="cancel" id="modal-cancel">Cancel</button>
       <button class="save" id="modal-save">Save</button>
