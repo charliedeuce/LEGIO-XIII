@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>LEGIO XIII</title>
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="leaflet/leaflet.css">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0B0E11">
@@ -411,6 +412,64 @@
   }
   .notable-entry:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
   .notable-entry .t{color:var(--amber);}
+  #map-section{
+    margin-top:28px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+  }
+  #map-section h2{
+    font-size:13px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--text);
+    margin:0 0 4px;
+  }
+  #map-hint{
+    font-size:11.5px;
+    color:var(--muted);
+    margin:0 0 14px;
+  }
+  #map-unit-select{
+    flex:1;
+    min-width:180px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:4px;
+    font-size:13px;
+  }
+  #map-locate-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  #map-locate-btn:hover{filter:brightness(1.2);}
+  #map{
+    height:420px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--panel);
+  }
+  .unit-pin{
+    border-radius:50%;
+    border:2px solid #0B0E11;
+    box-shadow:0 0 0 1px rgba(255,255,255,.4);
+  }
+  .unit-pin-label{
+    font-family:var(--mono);
+    font-size:10px;
+    font-weight:700;
+    color:#0B0E11;
+    background:rgba(255,255,255,.9);
+    padding:1px 4px;
+    border-radius:3px;
+    white-space:nowrap;
+  }
   #ics-overlay, #ics309-overlay{
     position:fixed;top:0;left:0;right:0;bottom:0;
     background:rgba(0,0,0,.6);
@@ -556,6 +615,16 @@
     <div id="grid"></div>
     <div id="empty-msg" style="display:none;">No units yet. Click "Add unit" to start building your board.</div>
 
+    <div id="map-section">
+      <h2>Unit Map</h2>
+      <p id="map-hint">Imagery courtesy of USGS. Pick a unit below, then click the map to place or move its pin — pins can also be dragged directly.</p>
+      <div class="toolbar" style="margin-bottom:10px;">
+        <select id="map-unit-select"></select>
+        <button id="map-locate-btn">Use my location</button>
+      </div>
+      <div id="map"></div>
+    </div>
+
     <div id="notable-section">
       <h2>Notable Activity</h2>
       <p id="notable-hint">Freeform, timestamped narrative — no unit required. This feeds the ICS-214 export.</p>
@@ -695,6 +764,7 @@
   </div>
 </div>
 
+<script src="leaflet/leaflet.js"></script>
 <script>
 const STORAGE_KEY = 'dispatch_board_units_v1';
 const LOG_KEY = 'dispatch_board_log_v1';
@@ -821,6 +891,8 @@ function renderGrid(){
   renderStats();
   renderRadioUnitOptions();
   renderQuickUnitOptions();
+  renderMapUnitOptions();
+  renderMapMarkers();
 }
 
 function renderQuickUnitOptions(){
@@ -1155,9 +1227,133 @@ document.getElementById('notable-clear-btn').addEventListener('click', () => {
   renderNotable();
 });
 
+initUnitMap();
 renderGrid();
 renderLog();
 renderNotable();
+
+/* ================= Unit Map ================= */
+
+const USGS_TILE_URL = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
+const DEFAULT_MAP_CENTER = [39.8283, -98.5795]; // geographic center of continental US
+const DEFAULT_MAP_ZOOM = 4;
+
+const statusPinColor = {available:'#3FB950', assigned:'#E8A33D', enroute:'#58A6FF', oos:'#F85149'};
+
+let unitMap = null;
+let mapMarkers = {};
+let placingUnitId = null;
+
+function initUnitMap(){
+  if(unitMap || typeof L === 'undefined') return;
+  unitMap = L.map('map', { attributionControl: true }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
+  L.tileLayer(USGS_TILE_URL, {
+    maxZoom: 19,
+    attribution: 'Imagery courtesy of USGS'
+  }).addTo(unitMap);
+
+  unitMap.on('click', (e) => {
+    if(!placingUnitId) return;
+    const u = units.find(u => u.id === placingUnitId);
+    if(!u) return;
+    u.lat = e.latlng.lat;
+    u.lng = e.latlng.lng;
+    u.updated = nowStr();
+    addLog(`${u.callsign}: placed on map.`);
+    save();
+    renderMapMarkers();
+  });
+}
+
+function makePinIcon(status, callsign){
+  return L.divIcon({
+    className: '',
+    html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+             <div class="unit-pin" style="width:18px;height:18px;background:${statusPinColor[status] || '#7C8896'};"></div>
+             <div class="unit-pin-label">${escapeHtml(callsign)}</div>
+           </div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+  });
+}
+
+function renderMapMarkers(){
+  if(!unitMap) return;
+  const existingIds = Object.keys(mapMarkers);
+  const currentIds = units.filter(u => u.lat != null && u.lng != null).map(u => u.id);
+
+  existingIds.forEach(id => {
+    if(!currentIds.includes(id)){
+      unitMap.removeLayer(mapMarkers[id]);
+      delete mapMarkers[id];
+    }
+  });
+
+  units.forEach(u => {
+    if(u.lat == null || u.lng == null) return;
+    if(mapMarkers[u.id]){
+      mapMarkers[u.id].setLatLng([u.lat, u.lng]);
+      mapMarkers[u.id].setIcon(makePinIcon(u.status, u.callsign));
+      mapMarkers[u.id].setPopupContent(popupHtml(u));
+    } else {
+      const marker = L.marker([u.lat, u.lng], {
+        icon: makePinIcon(u.status, u.callsign),
+        draggable: true
+      }).addTo(unitMap);
+      marker.bindPopup(popupHtml(u));
+      marker.on('dragend', () => {
+        const ll = marker.getLatLng();
+        const unit = units.find(x => x.id === u.id);
+        if(!unit) return;
+        unit.lat = ll.lat;
+        unit.lng = ll.lng;
+        unit.updated = nowStr();
+        addLog(`${unit.callsign}: pin moved on map.`);
+        save();
+      });
+      mapMarkers[u.id] = marker;
+    }
+  });
+}
+
+function popupHtml(u){
+  return `<b>${escapeHtml(u.callsign)}</b><br>${statusLabel[u.status]}<br>${escapeHtml(u.assignment || 'No assignment')}`;
+}
+
+function renderMapUnitOptions(){
+  const sel = document.getElementById('map-unit-select');
+  if(!sel) return;
+  const prev = sel.value;
+  if(units.length === 0){
+    sel.innerHTML = '<option value="">No units on board</option>';
+    sel.disabled = true;
+    placingUnitId = null;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">Select a unit to place...</option>' + units.map(u =>
+    `<option value="${u.id}">${escapeHtml(u.callsign)} — ${statusLabel[u.status]}${u.lat != null ? ' (has pin)' : ''}</option>`
+  ).join('');
+  if(units.some(u => u.id === prev)) sel.value = prev;
+  placingUnitId = sel.value || null;
+}
+
+document.getElementById('map-unit-select').addEventListener('change', (e) => {
+  placingUnitId = e.target.value || null;
+});
+
+document.getElementById('map-locate-btn').addEventListener('click', () => {
+  if(!navigator.geolocation){
+    alert('Location is not available on this device/browser.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if(unitMap) unitMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
+    },
+    () => alert('Could not get your location.')
+  );
+});
 
 /* ================= ICS-214 PDF export ================= */
 

@@ -1,15 +1,26 @@
-const CACHE_NAME = 'legio-xiii-v2';
+const CACHE_NAME = 'legio-xiii-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './leaflet/leaflet.js',
+  './leaflet/leaflet.css'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            // Don't let one missing file (e.g. leaflet not uploaded yet) break the whole precache
+            console.warn('Skipping uncacheable asset:', url, err);
+          })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
