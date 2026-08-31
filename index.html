@@ -63,9 +63,6 @@
     align-items:center;
     gap:12px;
   }
-  .helmet-icon{
-    flex-shrink:0;
-  }
   #clock{
     font-family:var(--mono);
     font-size:22px;
@@ -650,7 +647,6 @@
       gap:6px;
     }
     header h1{font-size:16px;}
-    .helmet-icon{width:26px;height:26px;}
     #clock{font-size:18px;}
     main{
       grid-template-columns:1fr;
@@ -713,34 +709,6 @@
       <h1>Legio XIII</h1>
       <div class="sub">Semper Vigilans</div>
     </div>
-    <svg class="helmet-icon" width="34" height="34" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path fill="#58A6FF" fill-rule="evenodd" d="
-        M 20 3
-        C 11 3, 7 10, 7 17
-        C 7 24, 8 29, 11 33
-        C 12.5 35, 15 35.5, 17 33.5
-        L 18 27
-        L 22 27
-        L 23 33.5
-        C 25 35.5, 27.5 35, 29 33
-        C 32 29, 33 24, 33 17
-        C 33 10, 29 3, 20 3
-        Z
-        M 12.5 15
-        L 18.5 15
-        L 18.5 27
-        L 21.5 27
-        L 21.5 15
-        L 27.5 15
-        L 27.5 18
-        L 21.5 18
-        L 21.5 24
-        L 18.5 24
-        L 18.5 18
-        L 12.5 18
-        Z
-      "/>
-    </svg>
   </div>
   <div id="clock">--:--:--</div>
 </header>
@@ -813,13 +781,13 @@
         <div class="logbox-header">
           <h2>Radio Log</h2>
           <p class="log-hint">Automatic record of status changes and radio traffic, logged via the sidebar controls.</p>
+          <div id="log-actions">
+            <button id="copy-log-btn">Copy log</button>
+            <button id="download-log-btn">Download .txt</button>
+            <button id="clear-log-btn">Clear log</button>
+          </div>
         </div>
         <div id="log-list"></div>
-        <div id="log-actions">
-          <button id="copy-log-btn">Copy log</button>
-          <button id="download-log-btn">Download .txt</button>
-          <button id="clear-log-btn">Clear log</button>
-        </div>
       </div>
     </div>
   </div>
