@@ -388,6 +388,34 @@
     font-size:13px;
   }
   #notable-clear-btn:hover{filter:brightness(1.2);}
+  #start-shift-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  #start-shift-btn:hover{filter:brightness(1.2);}
+  .shift-divider{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:8px 0;
+    color:var(--amber);
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .shift-divider::before, .shift-divider::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--amber);
+    opacity:.4;
+  }
   #notable-list{
     border:1px solid var(--line);
     border-radius:6px;
@@ -675,6 +703,10 @@
     </div>
     <input type="file" id="import-file" accept="application/json" style="display:none;">
 
+    <h2 style="margin-top:20px;">Shift</h2>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 8px;">ICS-214/309 exports only include entries logged since the last shift start.</p>
+    <button id="start-shift-btn" style="width:100%;">Start New Shift</button>
+
     <h2 style="margin-top:20px;">Reports</h2>
     <button class="primary" id="ics214-btn" style="width:100%;">Export ICS-214 (PDF)</button>
     <button class="primary" id="ics309-btn" style="width:100%;margin-top:8px;">Export ICS-309 (PDF)</button>
@@ -769,6 +801,7 @@
 const STORAGE_KEY = 'dispatch_board_units_v1';
 const LOG_KEY = 'dispatch_board_log_v1';
 const NOTABLE_KEY = 'dispatch_board_notable_v1';
+const SHIFT_KEY = 'dispatch_board_shift_v1';
 
 function safeGet(key){
   try{ return localStorage.getItem(key); }
@@ -782,6 +815,9 @@ function safeSet(key, value){
 let units = JSON.parse(safeGet(STORAGE_KEY) || '[]');
 let log = JSON.parse(safeGet(LOG_KEY) || '[]');
 let notableLog = JSON.parse(safeGet(NOTABLE_KEY) || '[]');
+const savedShift = JSON.parse(safeGet(SHIFT_KEY) || '{}');
+let shiftLogStart = savedShift.logStart || 0;
+let shiftNotableStart = savedShift.notableStart || 0;
 
 const statusLabel = {available:'Available', assigned:'Assigned', enroute:'En route', oos:'Out of service'};
 
@@ -794,6 +830,15 @@ function save(){
   safeSet(STORAGE_KEY, JSON.stringify(units));
   safeSet(LOG_KEY, JSON.stringify(log));
   safeSet(NOTABLE_KEY, JSON.stringify(notableLog));
+  safeSet(SHIFT_KEY, JSON.stringify({logStart: shiftLogStart, notableStart: shiftNotableStart}));
+}
+
+function startNewShift(){
+  shiftLogStart = log.length;
+  shiftNotableStart = notableLog.length;
+  save();
+  renderLog();
+  renderNotable();
 }
 
 function addNotable(text){
@@ -808,7 +853,8 @@ function renderNotable(){
     el.innerHTML = '<div id="notable-empty">No notable activity logged yet.</div>';
     return;
   }
-  el.innerHTML = notableLog.map(e => `
+  el.innerHTML = notableLog.map((e, i) => `
+    ${i === shiftNotableStart && shiftNotableStart > 0 ? '<div class="shift-divider">Shift start</div>' : ''}
     <div class="notable-entry"><span class="t">[${e.t}]</span> ${escapeHtml(e.text)}</div>
   `).join('');
 }
@@ -824,7 +870,8 @@ function addLog(text, radio, extra){
 
 function renderLog(){
   const el = document.getElementById('log-list');
-  el.innerHTML = log.map(e => `
+  el.innerHTML = log.map((e, i) => `
+    ${i === shiftLogStart && shiftLogStart > 0 ? '<div class="shift-divider">Shift start</div>' : ''}
     <div class="log-entry${e.radio ? ' radio' : ''}">
       <span class="t">[${e.t}]</span>
       ${e.radio ? '<span class="tag">Radio</span>' : ''}
@@ -1143,6 +1190,7 @@ document.getElementById('clear-log-btn').addEventListener('click', () => {
   if(log.length === 0) return;
   if(!confirm('Permanently erase the entire activity log? This cannot be undone.')) return;
   log = [];
+  shiftLogStart = 0;
   save();
   renderLog();
 });
@@ -1190,6 +1238,10 @@ document.getElementById('import-file').addEventListener('change', (e) => {
     units = data.units;
     log = data.log;
     notableLog = Array.isArray(data.notableLog) ? data.notableLog : [];
+    if(confirm('Mark this import as the start of a new shift?\n\nRecommended for shift handoffs — your ICS-214/309 exports will only include entries logged from this point forward, not the imported history.')){
+      shiftLogStart = log.length;
+      shiftNotableStart = notableLog.length;
+    }
     save();
     renderGrid();
     renderLog();
@@ -1223,6 +1275,7 @@ document.getElementById('notable-clear-btn').addEventListener('click', () => {
   if(notableLog.length === 0) return;
   if(!confirm('Permanently erase all Notable Activity entries? This cannot be undone.')) return;
   notableLog = [];
+  shiftNotableStart = 0;
   save();
   renderNotable();
 });
@@ -1782,6 +1835,10 @@ function closeIcsModal(){
   document.getElementById('ics-overlay').classList.remove('show');
 }
 
+document.getElementById('start-shift-btn').addEventListener('click', () => {
+  if(!confirm('Start a new shift now?\n\nEntries logged so far will be excluded from future ICS-214/309 exports until you start another new shift. Nothing is deleted.')) return;
+  startNewShift();
+});
 document.getElementById('ics214-btn').addEventListener('click', openIcsModal);
 document.getElementById('ics-cancel').addEventListener('click', closeIcsModal);
 document.getElementById('ics-overlay').addEventListener('click', (e) => {
@@ -1804,7 +1861,7 @@ document.getElementById('ics-generate').addEventListener('click', () => {
 
   safeSet(ICS_META_KEY, JSON.stringify(meta));
 
-  const bytes = generateICS214Pdf(meta, notableLog);
+  const bytes = generateICS214Pdf(meta, notableLog.slice(shiftNotableStart));
   const blob = new Blob([bytes], {type:'application/pdf'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1837,9 +1894,10 @@ document.getElementById('ics309-overlay').addEventListener('click', (e) => {
 });
 
 document.getElementById('ics309-generate').addEventListener('click', () => {
-  const radioCount = log.filter(e => e.radio).length;
+  const shiftLog = log.slice(shiftLogStart);
+  const radioCount = shiftLog.filter(e => e.radio).length;
   if(radioCount === 0){
-    alert('No radio traffic has been logged yet — nothing to put on a communications log.');
+    alert('No radio traffic has been logged yet this shift — nothing to put on a communications log.');
     return;
   }
   const now = new Date();
@@ -1854,7 +1912,7 @@ document.getElementById('ics309-generate').addEventListener('click', () => {
   };
   safeSet(ICS309_META_KEY, JSON.stringify(meta));
 
-  const bytes = generateICS309Pdf(meta, log);
+  const bytes = generateICS309Pdf(meta, shiftLog);
   const blob = new Blob([bytes], {type:'application/pdf'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
