@@ -293,7 +293,7 @@
     display:none;
     align-items:center;
     justify-content:center;
-    z-index:50;
+    z-index:9999;
   }
   #overlay.show{display:flex;}
   #modal{
@@ -476,7 +476,7 @@
     display:none;
     align-items:center;
     justify-content:center;
-    z-index:50;
+    z-index:9999;
     padding:16px;
   }
   #ics-overlay.show, #ics309-overlay.show{display:flex;}
@@ -1229,7 +1229,7 @@ document.getElementById('notable-clear-btn').addEventListener('click', () => {
 
 /* ================= Unit Map ================= */
 
-const USGS_TILE_URL = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
+const USGS_TILE_URL = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}';
 const DEFAULT_MAP_CENTER = [39.8283, -98.5795]; // geographic center of continental US
 const DEFAULT_MAP_ZOOM = 4;
 
