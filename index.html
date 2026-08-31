@@ -1254,7 +1254,6 @@ function initUnitMap(){
     u.lat = e.latlng.lat;
     u.lng = e.latlng.lng;
     u.updated = nowStr();
-    addLog(`${u.callsign}: placed on map.`);
     save();
     renderMapMarkers();
   });
@@ -1303,7 +1302,6 @@ function renderMapMarkers(){
         unit.lat = ll.lat;
         unit.lng = ll.lng;
         unit.updated = nowStr();
-        addLog(`${unit.callsign}: pin moved on map.`);
         save();
       });
       mapMarkers[u.id] = marker;
