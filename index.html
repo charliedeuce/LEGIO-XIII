@@ -1227,11 +1227,6 @@ document.getElementById('notable-clear-btn').addEventListener('click', () => {
   renderNotable();
 });
 
-initUnitMap();
-renderGrid();
-renderLog();
-renderNotable();
-
 /* ================= Unit Map ================= */
 
 const USGS_TILE_URL = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
@@ -1879,6 +1874,11 @@ if('serviceWorker' in navigator){
     });
   });
 }
+
+initUnitMap();
+renderGrid();
+renderLog();
+renderNotable();
 </script>
 </body>
 </html>
