@@ -54,9 +54,17 @@
   }
   header .sub{
     font-size:11px;
-    color:var(--muted);
+    color:#FFFFFF;
     letter-spacing:1px;
     margin-top:2px;
+  }
+  header .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .helmet-icon{
+    flex-shrink:0;
   }
   #clock{
     font-family:var(--mono);
@@ -639,6 +647,7 @@
       gap:6px;
     }
     header h1{font-size:16px;}
+    .helmet-icon{width:26px;height:26px;}
     #clock{font-size:18px;}
     main{
       grid-template-columns:1fr;
@@ -696,9 +705,17 @@
 <body>
 
 <header>
-  <div>
-    <h1>Legio XIII</h1>
-    <div class="sub">Semper Vigilans</div>
+  <div class="brand">
+    <svg class="helmet-icon" width="34" height="34" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path fill="#58A6FF" d="M 20 4 Q 26 4 27 10 Q 24 8.5 20 8.5 Q 16 8.5 13 10 Q 14 4 20 4 Z"/>
+      <path fill="#58A6FF" d="M 9 21 Q 9 10 20 9.5 Q 31 10 31 21 L 31 23.5 Q 25.5 25.5 20 25.5 Q 14.5 25.5 9 23.5 Z"/>
+      <path fill="#58A6FF" d="M 9.5 22 Q 7 23 7 28 Q 7 32.5 10.5 35 Q 13 35.5 14.5 34.5 Q 12 31 12 27 L 12.5 22.5 Z"/>
+      <path fill="#58A6FF" d="M 30.5 22 Q 33 23 33 28 Q 33 32.5 29.5 35 Q 27 35.5 25.5 34.5 Q 28 31 28 27 L 27.5 22.5 Z"/>
+    </svg>
+    <div>
+      <h1>Legio XIII</h1>
+      <div class="sub">Semper Vigilans</div>
+    </div>
   </div>
   <div id="clock">--:--:--</div>
 </header>
@@ -754,16 +771,6 @@
     </div>
 
     <div id="logs-row">
-      <div id="activity-log-section">
-        <h2>Activity Log</h2>
-        <div id="log-list"></div>
-        <div id="log-actions">
-          <button id="copy-log-btn">Copy log</button>
-          <button id="download-log-btn">Download .txt</button>
-          <button id="clear-log-btn">Clear log</button>
-        </div>
-      </div>
-
       <div id="notable-section">
         <h2>Notable Activity</h2>
         <p id="notable-hint">Freeform, timestamped narrative — no unit required. This feeds the ICS-214 export.</p>
@@ -773,6 +780,16 @@
           <button id="notable-clear-btn">Clear</button>
         </div>
         <div id="notable-list"></div>
+      </div>
+
+      <div id="activity-log-section">
+        <h2>Radio Log</h2>
+        <div id="log-list"></div>
+        <div id="log-actions">
+          <button id="copy-log-btn">Copy log</button>
+          <button id="download-log-btn">Download .txt</button>
+          <button id="clear-log-btn">Clear log</button>
+        </div>
       </div>
     </div>
   </div>
@@ -868,7 +885,7 @@
     <label>Home Agency (and Unit)</label>
     <input id="ics-agency" placeholder="e.g. Legio XIII">
     <p style="font-size:11px;color:var(--muted);margin:12px 0 0;">
-      Resources Assigned (Section 6) will be filled in automatically from your current units on the board. The Activity Log (Section 7) is pulled from your Notable Activity entries, not the sidebar Activity Log.
+      Resources Assigned (Section 6) will be filled in automatically from your current units on the board. The Activity Log (Section 7) is pulled from your Notable Activity entries, not the sidebar Radio Log.
     </p>
     <div class="modal-actions">
       <button class="cancel" id="ics-cancel">Cancel</button>
