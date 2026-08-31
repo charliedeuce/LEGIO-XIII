@@ -67,12 +67,12 @@
   main{
     display:grid;
     grid-template-columns:1fr 340px;
+    align-items:start;
     gap:0;
     min-height:calc(100vh - 65px);
   }
   #board{
     padding:20px 24px;
-    overflow-y:auto;
   }
   .toolbar{
     display:flex;
@@ -200,6 +200,10 @@
     padding:18px;
     display:flex;
     flex-direction:column;
+    position:sticky;
+    top:0;
+    max-height:100vh;
+    overflow-y:auto;
   }
   #log-panel h2{
     font-size:12px;
@@ -352,12 +356,15 @@
     border:1px dashed var(--line);
     border-radius:6px;
   }
-  #notable-section{
+  #logs-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
     margin-top:28px;
     padding-top:20px;
     border-top:1px solid var(--line);
   }
-  #notable-section h2{
+  #activity-log-section h2, #notable-section h2{
     font-size:13px;
     letter-spacing:1.5px;
     text-transform:uppercase;
@@ -416,11 +423,11 @@
     background:var(--amber);
     opacity:.4;
   }
-  #notable-list{
+  #log-list, #notable-list{
     border:1px solid var(--line);
     border-radius:6px;
     background:var(--panel);
-    max-height:280px;
+    height:420px;
     overflow-y:auto;
     padding:12px 16px;
   }
@@ -656,6 +663,9 @@
       border-left:none;
       border-top:1px solid var(--line);
       padding:16px;
+      position:static;
+      max-height:none;
+      overflow-y:visible;
     }
     #log-panel select, #log-panel input{
       padding:12px 10px;
@@ -664,7 +674,11 @@
     #log-panel button, .toolbar button{
       min-height:44px;
     }
-    #log-list{max-height:320px;}
+    #logs-row{
+      grid-template-columns:1fr;
+      gap:20px;
+    }
+    #log-list, #notable-list{height:320px;}
     #overlay{padding:16px;}
     #modal{width:100%;padding:18px;}
     #modal input, #modal select{
@@ -739,15 +753,27 @@
       </div>
     </div>
 
-    <div id="notable-section">
-      <h2>Notable Activity</h2>
-      <p id="notable-hint">Freeform, timestamped narrative — no unit required. This feeds the ICS-214 export.</p>
-      <div class="toolbar" style="margin-bottom:12px;">
-        <input id="notable-text" placeholder="Narrative entry..." style="flex:1;min-width:220px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
-        <button class="primary" id="notable-add-btn">Add entry</button>
-        <button id="notable-clear-btn">Clear</button>
+    <div id="logs-row">
+      <div id="activity-log-section">
+        <h2>Activity Log</h2>
+        <div id="log-list"></div>
+        <div id="log-actions">
+          <button id="copy-log-btn">Copy log</button>
+          <button id="download-log-btn">Download .txt</button>
+          <button id="clear-log-btn">Clear log</button>
+        </div>
       </div>
-      <div id="notable-list"></div>
+
+      <div id="notable-section">
+        <h2>Notable Activity</h2>
+        <p id="notable-hint">Freeform, timestamped narrative — no unit required. This feeds the ICS-214 export.</p>
+        <div class="toolbar" style="margin-bottom:12px;">
+          <input id="notable-text" placeholder="Narrative entry..." style="flex:1;min-width:220px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
+          <button class="primary" id="notable-add-btn">Add entry</button>
+          <button id="notable-clear-btn">Clear</button>
+        </div>
+        <div id="notable-list"></div>
+      </div>
     </div>
   </div>
 
@@ -773,14 +799,6 @@
     <select id="radio-to"></select>
     <input id="radio-text" placeholder="Subject / message" style="margin-top:8px;" spellcheck="true" autocorrect="on" autocapitalize="sentences">
     <button class="primary" id="radio-send-btn" style="margin-top:8px;width:100%;">Log traffic</button>
-
-    <h2 style="margin-top:20px;">Activity log</h2>
-    <div id="log-list"></div>
-    <div id="log-actions">
-      <button id="copy-log-btn">Copy log</button>
-      <button id="download-log-btn">Download .txt</button>
-      <button id="clear-log-btn">Clear log</button>
-    </div>
 
     <h2 style="margin-top:20px;">Backup</h2>
     <div id="backup-actions">
@@ -1379,18 +1397,61 @@ let unitMap = null;
 let mapMarkers = {};
 let placingUnitId = null;
 
-const CUSTOM_MAP_KEY = 'legio_custom_map_v1';
-let customMapImage = safeGet(CUSTOM_MAP_KEY) || null;
+const IDB_NAME = 'legio-xiii-db';
+const IDB_STORE = 'customMap';
+const CUSTOM_MAP_KEY = 'currentImage';
+let customMapImage = null;
 let mapMode = 'live';
 let customDragUnitId = null;
+let idbDb = null;
 
-function saveCustomMapImage(dataUrl){
-  try{
-    localStorage.setItem(CUSTOM_MAP_KEY, dataUrl);
-    return true;
-  }catch(e){
-    return false;
-  }
+function openIdb(){
+  return new Promise((resolve) => {
+    if(!('indexedDB' in window)){ resolve(null); return; }
+    try{
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore(IDB_STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    }catch(e){
+      resolve(null);
+    }
+  });
+}
+
+async function idbGet(key){
+  if(!idbDb) return null;
+  return new Promise((resolve) => {
+    try{
+      const tx = idbDb.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result != null ? req.result : null);
+      req.onerror = () => resolve(null);
+    }catch(e){
+      resolve(null);
+    }
+  });
+}
+
+async function idbSet(key, value){
+  if(!idbDb) return false;
+  return new Promise((resolve) => {
+    try{
+      const tx = idbDb.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
+    }catch(e){
+      resolve(false);
+    }
+  });
+}
+
+async function saveCustomMapImage(dataUrl){
+  return idbSet(CUSTOM_MAP_KEY, dataUrl);
 }
 
 function getImageDisplayRect(){
@@ -1515,13 +1576,13 @@ document.getElementById('custom-image-file').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     customMapImage = reader.result;
-    const persisted = saveCustomMapImage(customMapImage);
-    if(!persisted){
-      alert('This image is too large to save for future sessions, so it will work for now but won\'t survive a page reload. Consider using a smaller/compressed image if you want it to persist.');
-    }
     renderCustomImageDisplay();
+    const persisted = await saveCustomMapImage(customMapImage);
+    if(!persisted){
+      alert('This image works for the current session, but couldn\'t be saved for future ones (your device may be low on storage, or IndexedDB may be unavailable/restricted). It won\'t survive a page reload unless that\'s resolved.');
+    }
     e.target.value = '';
   };
   reader.readAsDataURL(file);
@@ -2174,10 +2235,17 @@ if('serviceWorker' in navigator){
 }
 
 initUnitMap();
-renderCustomImageDisplay();
 renderGrid();
 renderLog();
 renderNotable();
+
+(async () => {
+  idbDb = await openIdb();
+  if(idbDb){
+    customMapImage = await idbGet(CUSTOM_MAP_KEY);
+  }
+  renderCustomImageDisplay();
+})();
 </script>
 </body>
 </html>
