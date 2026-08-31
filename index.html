@@ -483,6 +483,83 @@
     border-radius:6px;
     background:var(--panel);
   }
+  .map-mode-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:8px 12px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .map-mode-btn.active{
+    background:var(--amber);
+    color:#241a06;
+    border-color:var(--amber);
+    font-weight:600;
+  }
+  .map-mode-btn:hover{filter:brightness(1.15);}
+  #custom-upload-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  #custom-upload-btn:hover{filter:brightness(1.2);}
+  #custom-map{
+    position:relative;
+    height:420px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--panel);
+    overflow:hidden;
+    cursor:crosshair;
+  }
+  #custom-map-empty{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    padding:0 30px;
+  }
+  #custom-map-img{
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    pointer-events:none;
+    user-select:none;
+  }
+  #custom-map-pins{
+    position:absolute;
+    inset:0;
+  }
+  .custom-pin{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .custom-pin.dragging{cursor:grabbing;z-index:10;}
+  .custom-pin-dot{
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    border:2px solid #0B0E11;
+    box-shadow:0 0 0 1px rgba(255,255,255,.4);
+  }
   .unit-pin{
     border-radius:50%;
     border:2px solid #0B0E11;
@@ -647,10 +724,19 @@
       <h2>Unit Map</h2>
       <p id="map-hint">Imagery courtesy of USGS. Pick a unit below, then click the map to place or move its pin — pins can also be dragged directly.</p>
       <div class="toolbar" style="margin-bottom:10px;">
+        <button id="mode-live-btn" class="map-mode-btn active">Live Map</button>
+        <button id="mode-custom-btn" class="map-mode-btn">Custom Image</button>
         <select id="map-unit-select"></select>
         <button id="map-locate-btn">Use my location</button>
+        <button id="custom-upload-btn" style="display:none;">Upload image</button>
+        <input type="file" id="custom-image-file" accept="image/*" style="display:none;">
       </div>
       <div id="map"></div>
+      <div id="custom-map" style="display:none;">
+        <div id="custom-map-empty">No image uploaded yet. Click "Upload image" above to add one (e.g. a drone or overhead shot).</div>
+        <img id="custom-map-img" style="display:none;">
+        <div id="custom-map-pins"></div>
+      </div>
     </div>
 
     <div id="notable-section">
@@ -940,6 +1026,7 @@ function renderGrid(){
   renderQuickUnitOptions();
   renderMapUnitOptions();
   renderMapMarkers();
+  renderCustomMapPins();
 }
 
 function renderQuickUnitOptions(){
@@ -1291,6 +1378,161 @@ const statusPinColor = {available:'#3FB950', assigned:'#E8A33D', enroute:'#58A6F
 let unitMap = null;
 let mapMarkers = {};
 let placingUnitId = null;
+
+const CUSTOM_MAP_KEY = 'legio_custom_map_v1';
+let customMapImage = safeGet(CUSTOM_MAP_KEY) || null;
+let mapMode = 'live';
+let customDragUnitId = null;
+
+function saveCustomMapImage(dataUrl){
+  try{
+    localStorage.setItem(CUSTOM_MAP_KEY, dataUrl);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function getImageDisplayRect(){
+  const img = document.getElementById('custom-map-img');
+  const container = document.getElementById('custom-map');
+  const cw = container.clientWidth, ch = container.clientHeight;
+  const nw = img.naturalWidth, nh = img.naturalHeight;
+  if(!nw || !nh) return {x:0, y:0, w:cw, h:ch};
+  const containerRatio = cw / ch;
+  const imageRatio = nw / nh;
+  let w, h, x, y;
+  if(imageRatio > containerRatio){
+    w = cw;
+    h = cw / imageRatio;
+    x = 0;
+    y = (ch - h) / 2;
+  } else {
+    h = ch;
+    w = ch * imageRatio;
+    y = 0;
+    x = (cw - w) / 2;
+  }
+  return {x, y, w, h};
+}
+
+function renderCustomMapPins(){
+  const el = document.getElementById('custom-map-pins');
+  if(!el) return;
+  const rect = getImageDisplayRect();
+  el.innerHTML = '';
+  units.forEach(u => {
+    if(u.imgX == null || u.imgY == null) return;
+    const leftPct = ((rect.x + u.imgX * rect.w) / el.clientWidth) * 100;
+    const topPct = ((rect.y + u.imgY * rect.h) / el.clientHeight) * 100;
+    const pin = document.createElement('div');
+    pin.className = 'custom-pin';
+    pin.style.left = leftPct + '%';
+    pin.style.top = topPct + '%';
+    pin.innerHTML = `<div class="custom-pin-dot" style="background:${statusPinColor[u.status] || '#7C8896'};"></div><div class="unit-pin-label">${escapeHtml(u.callsign)}</div>`;
+    pin.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      customDragUnitId = u.id;
+      pin.classList.add('dragging');
+      pin.setPointerCapture(e.pointerId);
+    });
+    pin.addEventListener('pointermove', (e) => {
+      if(customDragUnitId !== u.id) return;
+      updateCustomPinFromEvent(e, u.id, false);
+    });
+    pin.addEventListener('pointerup', (e) => {
+      if(customDragUnitId !== u.id) return;
+      updateCustomPinFromEvent(e, u.id, true);
+      pin.classList.remove('dragging');
+      customDragUnitId = null;
+    });
+    el.appendChild(pin);
+  });
+}
+
+function updateCustomPinFromEvent(e, unitId, commit){
+  const container = document.getElementById('custom-map');
+  const rect = getImageDisplayRect();
+  const bounds = container.getBoundingClientRect();
+  const px = e.clientX - bounds.left;
+  const py = e.clientY - bounds.top;
+  let fx = (px - rect.x) / rect.w;
+  let fy = (py - rect.y) / rect.h;
+  fx = Math.max(0, Math.min(1, fx));
+  fy = Math.max(0, Math.min(1, fy));
+  const u = units.find(x => x.id === unitId);
+  if(!u) return;
+  u.imgX = fx;
+  u.imgY = fy;
+  if(commit){
+    u.updated = nowStr();
+    save();
+  }
+  renderCustomMapPins();
+}
+
+function setMapMode(mode){
+  mapMode = mode;
+  document.getElementById('mode-live-btn').classList.toggle('active', mode === 'live');
+  document.getElementById('mode-custom-btn').classList.toggle('active', mode === 'custom');
+  document.getElementById('map').style.display = mode === 'live' ? 'block' : 'none';
+  document.getElementById('custom-map').style.display = mode === 'custom' ? 'block' : 'none';
+  document.getElementById('map-locate-btn').style.display = mode === 'live' ? 'inline-block' : 'none';
+  document.getElementById('custom-upload-btn').style.display = mode === 'custom' ? 'inline-block' : 'none';
+  document.getElementById('map-hint').textContent = mode === 'live'
+    ? 'Imagery courtesy of USGS. Pick a unit below, then click the map to place or move its pin — pins can also be dragged directly.'
+    : 'Upload a photo (drone shot, venue map, etc.), pick a unit below, then click the image to place or move its pin.';
+  if(mode === 'live' && unitMap){
+    setTimeout(() => unitMap.invalidateSize(), 50);
+  }
+  if(mode === 'custom'){
+    renderCustomImageDisplay();
+  }
+}
+
+function renderCustomImageDisplay(){
+  const img = document.getElementById('custom-map-img');
+  const empty = document.getElementById('custom-map-empty');
+  if(customMapImage){
+    img.src = customMapImage;
+    img.style.display = 'block';
+    empty.style.display = 'none';
+    img.onload = () => renderCustomMapPins();
+  } else {
+    img.style.display = 'none';
+    empty.style.display = 'flex';
+  }
+}
+
+document.getElementById('mode-live-btn').addEventListener('click', () => setMapMode('live'));
+document.getElementById('mode-custom-btn').addEventListener('click', () => setMapMode('custom'));
+
+document.getElementById('custom-upload-btn').addEventListener('click', () => {
+  document.getElementById('custom-image-file').click();
+});
+
+document.getElementById('custom-image-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    customMapImage = reader.result;
+    const persisted = saveCustomMapImage(customMapImage);
+    if(!persisted){
+      alert('This image is too large to save for future sessions, so it will work for now but won\'t survive a page reload. Consider using a smaller/compressed image if you want it to persist.');
+    }
+    renderCustomImageDisplay();
+    e.target.value = '';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('custom-map').addEventListener('click', (e) => {
+  if(!placingUnitId) return;
+  if(!customMapImage) return;
+  if(e.target.closest('.custom-pin')) return;
+  updateCustomPinFromEvent(e, placingUnitId, true);
+});
 
 function initUnitMap(){
   if(unitMap || typeof L === 'undefined') return;
@@ -1932,6 +2174,7 @@ if('serviceWorker' in navigator){
 }
 
 initUnitMap();
+renderCustomImageDisplay();
 renderGrid();
 renderLog();
 renderNotable();
