@@ -58,6 +58,18 @@
     letter-spacing:1px;
     margin-top:2px;
   }
+  #app-version{
+    position:fixed;
+    bottom:6px;
+    left:50%;
+    transform:translateX(-50%);
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--muted);
+    opacity:.7;
+    pointer-events:none;
+    z-index:5;
+  }
   header .brand{
     display:flex;
     align-items:center;
@@ -217,6 +229,21 @@
     color:var(--muted);
     margin:0 0 12px;
   }
+  #save-indicator{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:6px 10px;
+    margin-bottom:16px;
+    text-align:center;
+  }
+  #save-indicator.save-failed{
+    color:var(--red);
+    border-color:var(--red);
+  }
   #log-list{
     flex:1;
     overflow-y:auto;
@@ -230,7 +257,11 @@
     line-height:1.5;
     border-bottom:1px dashed var(--line);
     padding-bottom:6px;
+    cursor:pointer;
+    border-radius:3px;
+    transition:background .1s;
   }
+  .log-entry:hover{background:rgba(255,255,255,.04);}
   .log-entry .t{color:var(--amber);}
   .log-entry .c{color:var(--text);font-weight:700;}
   .log-entry.radio{border-bottom-color:var(--blue);}
@@ -452,7 +483,11 @@
     border-bottom:1px dashed var(--line);
     padding-bottom:8px;
     margin-bottom:8px;
+    cursor:pointer;
+    border-radius:3px;
+    transition:background .1s;
   }
+  .notable-entry:hover{background:rgba(255,255,255,.04);}
   .notable-entry:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
   .notable-entry .t{color:var(--amber);}
   #map-section{
@@ -590,7 +625,7 @@
     border-radius:3px;
     white-space:nowrap;
   }
-  #ics-overlay, #ics309-overlay{
+  #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay{
     position:fixed;top:0;left:0;right:0;bottom:0;
     background:rgba(0,0,0,.6);
     display:none;
@@ -599,8 +634,8 @@
     z-index:9999;
     padding:16px;
   }
-  #ics-overlay.show, #ics309-overlay.show{display:flex;}
-  #ics-modal, #ics309-modal{
+  #ics-overlay.show, #ics309-overlay.show, #shortcuts-overlay.show, #edit-entry-overlay.show{display:flex;}
+  #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal{
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:8px;
@@ -610,13 +645,33 @@
     max-height:88vh;
     overflow-y:auto;
   }
-  #ics-modal h3, #ics309-modal h3{
+  #ics-modal h3, #ics309-modal h3, #shortcuts-modal h3, #edit-entry-modal h3{
     margin:0 0 16px;
     font-family:var(--mono);
     font-size:16px;
     color:var(--amber);
   }
-  #ics-modal label, #ics309-modal label{
+  #shortcuts-table{
+    width:100%;
+    border-collapse:collapse;
+  }
+  #shortcuts-table td{
+    padding:7px 4px;
+    border-bottom:1px solid var(--line);
+    font-size:13px;
+    color:var(--text);
+  }
+  #shortcuts-table tr:last-child td{border-bottom:none;}
+  #shortcuts-table td.key{
+    width:56px;
+    font-family:var(--mono);
+    font-weight:700;
+    color:var(--amber);
+    background:var(--bg);
+    border-radius:4px;
+    text-align:center;
+  }
+  #ics-modal label, #ics309-modal label, #edit-entry-modal label{
     display:block;
     font-size:11px;
     text-transform:uppercase;
@@ -624,7 +679,7 @@
     color:var(--muted);
     margin:12px 0 5px;
   }
-  #ics-modal input, #ics309-modal input{
+  #ics-modal input, #ics309-modal input, #edit-entry-modal input, #edit-entry-modal textarea{
     width:100%;
     background:var(--bg);
     border:1px solid var(--line);
@@ -633,6 +688,10 @@
     border-radius:4px;
     font-size:13px;
     font-family:var(--sans);
+  }
+  #edit-entry-modal textarea{
+    resize:vertical;
+    font-family:var(--mono);
   }
   .ics-row{
     display:flex;
@@ -694,14 +753,16 @@
       font-size:15px;
     }
     .modal-actions button{min-height:44px;font-size:14px;}
-    #ics-overlay, #ics309-overlay{padding:16px;}
-    #ics-modal, #ics309-modal{width:100%;padding:18px;}
-    #ics-modal input, #ics309-modal input{padding:12px 10px;font-size:15px;}
+    #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay{padding:16px;}
+    #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal{width:100%;padding:18px;}
+    #ics-modal input, #ics309-modal input, #edit-entry-modal input, #edit-entry-modal textarea{padding:12px 10px;font-size:15px;}
     .ics-row{flex-direction:column;}
   }
 </style>
 </head>
 <body>
+
+<div id="app-version">v1.29</div>
 
 <header>
   <div class="brand">
@@ -793,6 +854,7 @@
   </div>
 
   <div id="log-panel">
+    <div id="save-indicator">Not saved yet</div>
     <h2>Quick update</h2>
     <select id="quick-unit"></select>
     <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 4px;">Status</label>
@@ -915,6 +977,41 @@
   </div>
 </div>
 
+<div id="shortcuts-overlay">
+  <div id="shortcuts-modal">
+    <h3>Keyboard Shortcuts</h3>
+    <table id="shortcuts-table">
+      <tr><td class="key">Q</td><td>Jump to Quick Update</td></tr>
+      <tr><td class="key">U</td><td>Add a new unit</td></tr>
+      <tr><td class="key">R</td><td>Jump to Radio Traffic</td></tr>
+      <tr><td class="key">N</td><td>Jump to Notable Activity entry</td></tr>
+      <tr><td class="key">M</td><td>Jump to Unit Map</td></tr>
+      <tr><td class="key">S</td><td>Start New Shift</td></tr>
+      <tr><td class="key">Esc</td><td>Close any open window</td></tr>
+      <tr><td class="key">?</td><td>Show this list</td></tr>
+    </table>
+    <p style="font-size:11px;color:var(--muted);margin:14px 0 0;">Shortcuts are disabled while typing in a field, so they'll never interrupt data entry.</p>
+    <div class="modal-actions">
+      <button class="save" id="shortcuts-close" style="flex:1;">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="edit-entry-overlay">
+  <div id="edit-entry-modal">
+    <h3>Edit Entry</h3>
+    <label>Time</label>
+    <input id="edit-entry-time" placeholder="HH:MM:SS">
+    <label>Text</label>
+    <textarea id="edit-entry-text" rows="4"></textarea>
+    <p style="font-size:11px;color:var(--muted);margin:10px 0 0;">Editing this entry will not add anything else to the log.</p>
+    <div class="modal-actions">
+      <button class="cancel" id="edit-entry-cancel">Cancel</button>
+      <button class="save" id="edit-entry-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <script src="leaflet/leaflet.js"></script>
 <script>
 const STORAGE_KEY = 'dispatch_board_units_v1';
@@ -927,8 +1024,11 @@ function safeGet(key){
   catch(e){ return null; }
 }
 function safeSet(key, value){
-  try{ localStorage.setItem(key, value); }
-  catch(e){ /* storage blocked on this device — app still works, just won't persist */ }
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  }
+  catch(e){ return false; /* storage blocked on this device — app still works, just won't persist */ }
 }
 
 let units = JSON.parse(safeGet(STORAGE_KEY) || '[]');
@@ -946,10 +1046,23 @@ function nowStr(){
 }
 
 function save(){
-  safeSet(STORAGE_KEY, JSON.stringify(units));
-  safeSet(LOG_KEY, JSON.stringify(log));
-  safeSet(NOTABLE_KEY, JSON.stringify(notableLog));
-  safeSet(SHIFT_KEY, JSON.stringify({logStart: shiftLogStart, notableStart: shiftNotableStart}));
+  const ok1 = safeSet(STORAGE_KEY, JSON.stringify(units));
+  const ok2 = safeSet(LOG_KEY, JSON.stringify(log));
+  const ok3 = safeSet(NOTABLE_KEY, JSON.stringify(notableLog));
+  const ok4 = safeSet(SHIFT_KEY, JSON.stringify({logStart: shiftLogStart, notableStart: shiftNotableStart}));
+  updateSaveIndicator(ok1 && ok2 && ok3 && ok4);
+}
+
+function updateSaveIndicator(success){
+  const el = document.getElementById('save-indicator');
+  if(!el) return;
+  if(success){
+    el.textContent = 'Last saved ' + nowStr();
+    el.classList.remove('save-failed');
+  } else {
+    el.textContent = 'Save failed — storage unavailable';
+    el.classList.add('save-failed');
+  }
 }
 
 function startNewShift(){
@@ -974,7 +1087,7 @@ function renderNotable(){
   }
   el.innerHTML = notableLog.map((e, i) => `
     ${i === shiftNotableStart && shiftNotableStart > 0 ? '<div class="shift-divider">Shift start</div>' : ''}
-    <div class="notable-entry"><span class="t">[${e.t}]</span> ${escapeHtml(e.text)}</div>
+    <div class="notable-entry" data-index="${i}"><span class="t">[${e.t}]</span> ${escapeHtml(e.text)}</div>
   `).join('');
 }
 
@@ -991,7 +1104,7 @@ function renderLog(){
   const el = document.getElementById('log-list');
   el.innerHTML = log.map((e, i) => `
     ${i === shiftLogStart && shiftLogStart > 0 ? '<div class="shift-divider">Shift start</div>' : ''}
-    <div class="log-entry${e.radio ? ' radio' : ''}">
+    <div class="log-entry${e.radio ? ' radio' : ''}" data-index="${i}">
       <span class="t">[${e.t}]</span>
       ${e.radio ? '<span class="tag">Radio</span>' : ''}
       ${e.radio && (e.from || e.to) ? `<b>${escapeHtml(e.from || '?')} &rarr; ${escapeHtml(e.to || '?')}:</b> ` : ''}
@@ -1171,7 +1284,7 @@ function sendRadioTraffic(){
   }
   const fromLabel = stationLabel(fromVal);
   const toLabel = stationLabel(toVal);
-  addLog(`${fromLabel} -> ${toLabel}: "${text}"`, true, { from: fromLabel, to: toLabel });
+  addLog(`"${text}"`, true, { from: fromLabel, to: toLabel });
   textEl.value = '';
   textEl.focus();
 }
@@ -1268,7 +1381,7 @@ document.getElementById('filter-type').addEventListener('change', renderGrid);
 document.getElementById('filter-status').addEventListener('change', renderGrid);
 document.getElementById('clear-all-btn').addEventListener('click', () => {
   if(units.length === 0) return;
-  if(!confirm('Remove all units from the board? This does not clear the activity log.')) return;
+  if(!confirm('Remove all units from the board? This does not clear the activity log.\n\nHave you exported or printed anything you need from this board first? This cannot be undone.')) return;
   units = [];
   addLog('Board cleared — all units removed.');
   save();
@@ -1308,7 +1421,7 @@ document.getElementById('download-log-btn').addEventListener('click', () => {
 });
 document.getElementById('clear-log-btn').addEventListener('click', () => {
   if(log.length === 0) return;
-  if(!confirm('Permanently erase the entire activity log? This cannot be undone.')) return;
+  if(!confirm('Permanently erase the entire activity log?\n\nHave you exported the board or generated your ICS-309 first, if you need a record of this? This cannot be undone.')) return;
   log = [];
   shiftLogStart = 0;
   save();
@@ -1351,7 +1464,7 @@ document.getElementById('import-file').addEventListener('change', (e) => {
       e.target.value = '';
       return;
     }
-    if(!confirm('Import this backup? It will replace everything currently on the board and in the log.')) {
+    if(!confirm('Import this backup? It will replace everything currently on the board and in the log.\n\nHave you exported or printed anything you need from the current board first? This cannot be undone.')) {
       e.target.value = '';
       return;
     }
@@ -1393,7 +1506,7 @@ document.getElementById('notable-text').addEventListener('keydown', (e) => {
 });
 document.getElementById('notable-clear-btn').addEventListener('click', () => {
   if(notableLog.length === 0) return;
-  if(!confirm('Permanently erase all Notable Activity entries? This cannot be undone.')) return;
+  if(!confirm('Permanently erase all Notable Activity entries?\n\nHave you exported the board or generated your ICS-214 first, if you need a record of this? This cannot be undone.')) return;
   notableLog = [];
   shiftNotableStart = 0;
   save();
@@ -2241,6 +2354,142 @@ document.getElementById('ics309-generate').addEventListener('click', () => {
 
 /* ================= end ICS-214 / ICS-309 PDF export ================= */
 
+/* ================= Edit log/notable entries ================= */
+
+let editEntryArrayName = null;
+let editEntryIndex = null;
+
+function openEditEntry(arrayName, index){
+  const arr = arrayName === 'log' ? log : notableLog;
+  const entry = arr[index];
+  if(!entry) return;
+  editEntryArrayName = arrayName;
+  editEntryIndex = index;
+  document.getElementById('edit-entry-time').value = entry.t || '';
+  document.getElementById('edit-entry-text').value = entry.text || '';
+  document.getElementById('edit-entry-overlay').classList.add('show');
+}
+
+function closeEditEntry(){
+  document.getElementById('edit-entry-overlay').classList.remove('show');
+  editEntryArrayName = null;
+  editEntryIndex = null;
+}
+
+document.getElementById('log-list').addEventListener('click', (e) => {
+  const entryEl = e.target.closest('.log-entry');
+  if(!entryEl) return;
+  const idx = parseInt(entryEl.dataset.index, 10);
+  openEditEntry('log', idx);
+});
+
+document.getElementById('notable-list').addEventListener('click', (e) => {
+  const entryEl = e.target.closest('.notable-entry');
+  if(!entryEl) return;
+  const idx = parseInt(entryEl.dataset.index, 10);
+  openEditEntry('notable', idx);
+});
+
+document.getElementById('edit-entry-cancel').addEventListener('click', closeEditEntry);
+document.getElementById('edit-entry-overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'edit-entry-overlay') closeEditEntry();
+});
+
+document.getElementById('edit-entry-save').addEventListener('click', () => {
+  if(editEntryArrayName == null || editEntryIndex == null) return;
+  const newTime = document.getElementById('edit-entry-time').value.trim();
+  const newText = document.getElementById('edit-entry-text').value.trim();
+  if(!newTime || !newText){
+    alert('Time and text can\'t be blank.');
+    return;
+  }
+  const arr = editEntryArrayName === 'log' ? log : notableLog;
+  const entry = arr[editEntryIndex];
+  if(entry){
+    entry.t = newTime;
+    entry.text = newText;
+    save();
+    if(editEntryArrayName === 'log') renderLog();
+    else renderNotable();
+  }
+  closeEditEntry();
+});
+
+/* ================= Keyboard shortcuts ================= */
+
+function anyModalOpen(){
+  return ['overlay','ics-overlay','ics309-overlay','shortcuts-overlay','edit-entry-overlay']
+    .some(id => document.getElementById(id).classList.contains('show'));
+}
+
+function closeWhicheverModalIsOpen(){
+  if(document.getElementById('overlay').classList.contains('show')) closeModal();
+  else if(document.getElementById('ics-overlay').classList.contains('show')) closeIcsModal();
+  else if(document.getElementById('ics309-overlay').classList.contains('show')) closeIcs309Modal();
+  else if(document.getElementById('shortcuts-overlay').classList.contains('show')) closeShortcuts();
+  else if(document.getElementById('edit-entry-overlay').classList.contains('show')) closeEditEntry();
+}
+
+function openShortcuts(){
+  document.getElementById('shortcuts-overlay').classList.add('show');
+}
+function closeShortcuts(){
+  document.getElementById('shortcuts-overlay').classList.remove('show');
+}
+document.getElementById('shortcuts-close').addEventListener('click', closeShortcuts);
+document.getElementById('shortcuts-overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'shortcuts-overlay') closeShortcuts();
+});
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape'){
+    if(anyModalOpen()) closeWhicheverModalIsOpen();
+    return;
+  }
+
+  const active = document.activeElement;
+  const isTyping = active && (
+    active.tagName === 'INPUT' || active.tagName === 'SELECT' ||
+    active.tagName === 'TEXTAREA' || active.isContentEditable
+  );
+  if(isTyping) return;
+  if(anyModalOpen()) return;
+
+  switch(e.key.toLowerCase()){
+    case 'q':
+      e.preventDefault();
+      document.getElementById('quick-unit').focus();
+      break;
+    case 'u':
+      e.preventDefault();
+      openModal(null);
+      break;
+    case 'r':
+      e.preventDefault();
+      document.getElementById('radio-from').focus();
+      break;
+    case 'n':
+      e.preventDefault();
+      document.getElementById('notable-text').scrollIntoView({behavior:'smooth', block:'center'});
+      document.getElementById('notable-text').focus();
+      break;
+    case 'm':
+      e.preventDefault();
+      document.getElementById('map-section').scrollIntoView({behavior:'smooth', block:'start'});
+      break;
+    case 's':
+      e.preventDefault();
+      document.getElementById('start-shift-btn').click();
+      break;
+    case '?':
+      e.preventDefault();
+      openShortcuts();
+      break;
+  }
+});
+
+/* ================= end Edit entries / Keyboard shortcuts ================= */
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {
@@ -2253,6 +2502,7 @@ initUnitMap();
 renderGrid();
 renderLog();
 renderNotable();
+save();
 
 (async () => {
   idbDb = await openIdb();
