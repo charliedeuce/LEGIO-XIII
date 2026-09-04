@@ -1,4 +1,4 @@
-const CACHE_NAME = 'legio-xiii-v3';
+const CACHE_NAME = 'baseline-terminal-v4';
 const ASSETS = [
   './',
   './index.html',

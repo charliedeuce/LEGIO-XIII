@@ -1,6 +1,6 @@
 {
-  "name": "Legio XIII",
-  "short_name": "Legio XIII",
+  "name": "Baseline Terminal",
+  "short_name": "Baseline Terminal",
   "description": "Semper Vigilans — tactical dispatch board",
   "start_url": "./index.html",
   "scope": "./",

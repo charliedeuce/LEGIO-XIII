@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>LEGIO XIII</title>
+<title>BASELINE TERMINAL</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="leaflet/leaflet.css">
 <link rel="icon" href="icon-192.png">
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#0B0E11">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Legio XIII">
+<meta name="apple-mobile-web-app-title" content="Baseline Terminal">
 <style>
   :root{
     --bg:#0B0E11;
@@ -40,23 +40,25 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:16px 24px;
+    padding:18px 26px;
     border-bottom:1px solid var(--line);
     background:linear-gradient(180deg,#141920,#0f1319);
   }
   header h1{
-    font-size:18px;
-    letter-spacing:1.5px;
+    font-size:26px;
+    letter-spacing:1px;
     text-transform:uppercase;
     margin:0;
     font-weight:700;
-    color:var(--red);
+    font-style:italic;
+    color:var(--blue);
   }
   header .sub{
-    font-size:11px;
+    font-size:12px;
     color:#FFFFFF;
-    letter-spacing:1px;
-    margin-top:2px;
+    letter-spacing:3.5px;
+    margin-top:5px;
+    text-align:center;
   }
   #app-version{
     position:fixed;
@@ -73,7 +75,10 @@
   header .brand{
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:16px;
+  }
+  .helmet-icon{
+    flex-shrink:0;
   }
   #clock{
     font-family:var(--mono);
@@ -705,7 +710,9 @@
       flex-wrap:wrap;
       gap:6px;
     }
-    header h1{font-size:16px;}
+    header h1{font-size:19px;}
+    header .sub{font-size:10px;letter-spacing:2px;}
+    .helmet-icon{width:40px;height:40px;}
     #clock{font-size:18px;}
     main{
       grid-template-columns:1fr;
@@ -767,9 +774,25 @@
 <header>
   <div class="brand">
     <div>
-      <h1>Legio XIII</h1>
+      <h1>Baseline Terminal</h1>
       <div class="sub">Semper Vigilans</div>
     </div>
+    <svg class="helmet-icon" width="58" height="58" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M 50 6
+               C 66 6, 80 11, 86 19
+               L 86 46
+               C 86 67, 72 84, 50 95
+               C 28 84, 14 67, 14 46
+               L 14 19
+               C 20 11, 34 6, 50 6
+               Z"
+            fill="#0B0E11" stroke="#D4AF37" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M 33.0 29.5 L 34.82 34.49 L 40.13 34.68 L 35.95 37.96 L 37.41 43.07 L 33.0 40.1 L 28.59 43.07 L 30.05 37.96 L 25.87 34.68 L 31.18 34.49 Z" fill="#C81E1E"/>
+      <path d="M 50.0 19.5 L 52.06 25.17 L 58.08 25.37 L 53.33 29.08 L 55.0 34.88 L 50.0 31.5 L 45.0 34.88 L 46.67 29.08 L 41.92 25.37 L 47.94 25.17 Z" fill="#3B7DD8"/>
+      <path d="M 67.0 29.5 L 68.82 34.49 L 74.13 34.68 L 69.95 37.96 L 71.41 43.07 L 67.0 40.1 L 62.59 43.07 L 64.05 37.96 L 59.87 34.68 L 65.18 34.49 Z" fill="#F2F2F2"/>
+      <polyline points="20,60 38,60 43,50 46,70 50,38 54,70 57,50 62,60 80,60"
+                fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
   </div>
   <div id="clock">--:--:--</div>
 </header>
@@ -1438,7 +1461,7 @@ document.getElementById('export-btn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'legio-xiii-backup-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  a.download = 'baseline-terminal-backup-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
   a.click();
 });
 
