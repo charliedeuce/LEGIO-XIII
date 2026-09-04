@@ -25,6 +25,7 @@
     --red:#F85149;
     --blue:#58A6FF;
     --purple:#B392F0;
+    --gold:#D4AF37;
     --mono: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
@@ -402,8 +403,22 @@
     grid-template-columns:1fr 1fr;
     gap:24px;
     margin-top:28px;
-    padding-top:20px;
-    border-top:1px solid var(--line);
+    padding-top:28px;
+    position:relative;
+  }
+  #logs-row::before{
+    content:'';
+    display:block;
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:18px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 20'%3E%3Cpolyline points='0,10 14,10 18,4 22,16 26,2 30,16 34,10 60,10' fill='none' stroke='%23D4AF37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:repeat-x;
+    background-position:center;
+    background-size:auto 100%;
+    opacity:.7;
   }
   #activity-log-section h2, #notable-section h2{
     font-size:13px;
@@ -474,6 +489,23 @@
     height:420px;
     overflow-y:auto;
     padding:12px 16px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--gold) var(--panel);
+  }
+  #log-list::-webkit-scrollbar, #notable-list::-webkit-scrollbar{
+    width:8px;
+  }
+  #log-list::-webkit-scrollbar-track, #notable-list::-webkit-scrollbar-track{
+    background:var(--panel);
+    border-radius:6px;
+  }
+  #log-list::-webkit-scrollbar-thumb, #notable-list::-webkit-scrollbar-thumb{
+    background:var(--gold);
+    border-radius:6px;
+    border:2px solid var(--panel);
+  }
+  #log-list::-webkit-scrollbar-thumb:hover, #notable-list::-webkit-scrollbar-thumb:hover{
+    background:#c9a02f;
   }
   #notable-empty{
     color:var(--muted);
@@ -497,8 +529,22 @@
   .notable-entry .t{color:var(--amber);}
   #map-section{
     margin-top:28px;
-    padding-top:20px;
-    border-top:1px solid var(--line);
+    padding-top:28px;
+    position:relative;
+  }
+  #map-section::before{
+    content:'';
+    display:block;
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:18px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 20'%3E%3Cpolyline points='0,10 14,10 18,4 22,16 26,2 30,16 34,10 60,10' fill='none' stroke='%23D4AF37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:repeat-x;
+    background-position:center;
+    background-size:auto 100%;
+    opacity:.7;
   }
   #map-section h2{
     font-size:13px;
@@ -630,7 +676,7 @@
     border-radius:3px;
     white-space:nowrap;
   }
-  #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay{
+  #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay, #dialog-overlay{
     position:fixed;top:0;left:0;right:0;bottom:0;
     background:rgba(0,0,0,.6);
     display:none;
@@ -639,8 +685,8 @@
     z-index:9999;
     padding:16px;
   }
-  #ics-overlay.show, #ics309-overlay.show, #shortcuts-overlay.show, #edit-entry-overlay.show{display:flex;}
-  #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal{
+  #ics-overlay.show, #ics309-overlay.show, #shortcuts-overlay.show, #edit-entry-overlay.show, #dialog-overlay.show{display:flex;}
+  #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal, #dialog-modal{
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:8px;
@@ -655,6 +701,13 @@
     font-family:var(--mono);
     font-size:16px;
     color:var(--amber);
+  }
+  #dialog-message{
+    margin:0;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text);
+    white-space:pre-line;
   }
   #shortcuts-table{
     width:100%;
@@ -760,8 +813,8 @@
       font-size:15px;
     }
     .modal-actions button{min-height:44px;font-size:14px;}
-    #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay{padding:16px;}
-    #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal{width:100%;padding:18px;}
+    #ics-overlay, #ics309-overlay, #shortcuts-overlay, #edit-entry-overlay, #dialog-overlay{padding:16px;}
+    #ics-modal, #ics309-modal, #shortcuts-modal, #edit-entry-modal, #dialog-modal{width:100%;padding:18px;}
     #ics-modal input, #ics309-modal input, #edit-entry-modal input, #edit-entry-modal textarea{padding:12px 10px;font-size:15px;}
     .ics-row{flex-direction:column;}
   }
@@ -1035,6 +1088,16 @@
   </div>
 </div>
 
+<div id="dialog-overlay">
+  <div id="dialog-modal">
+    <p id="dialog-message"></p>
+    <div class="modal-actions" id="dialog-actions">
+      <button class="cancel" id="dialog-cancel-btn" style="display:none;">Cancel</button>
+      <button class="save" id="dialog-ok-btn">OK</button>
+    </div>
+  </div>
+</div>
+
 <script src="leaflet/leaflet.js"></script>
 <script>
 const STORAGE_KEY = 'dispatch_board_units_v1';
@@ -1224,11 +1287,11 @@ function quickUpdate(){
   const newAssign = assignEl.value.trim();
 
   if(!id){
-    alert('No unit selected.');
+    showAlert('No unit selected.');
     return;
   }
   if(!newStatus && !newLoc && !newAssign){
-    alert('Choose a status or enter a new location/assignment first.');
+    showAlert('Choose a status or enter a new location/assignment first.');
     return;
   }
 
@@ -1247,7 +1310,7 @@ function quickUpdate(){
     u.assignment = newAssign;
   }
   if(changes.length === 0){
-    alert('No change from current values.');
+    showAlert('No change from current values.');
     return;
   }
   u.updated = nowStr();
@@ -1298,11 +1361,11 @@ function sendRadioTraffic(){
   const text = textEl.value.trim();
 
   if(!fromVal || !toVal){
-    alert('Select both a "From" and a "To" station.');
+    showAlert('Select both a "From" and a "To" station.');
     return;
   }
   if(!text){
-    alert('Enter the radio traffic first.');
+    showAlert('Enter the radio traffic first.');
     return;
   }
   const fromLabel = stationLabel(fromVal);
@@ -1315,11 +1378,12 @@ function sendRadioTraffic(){
 function removeUnit(id){
   const u = units.find(u => u.id === id);
   if(!u) return;
-  if(!confirm(`Remove unit ${u.callsign}?`)) return;
-  units = units.filter(u => u.id !== id);
-  addLog(`${u.callsign} removed from board.`);
-  save();
-  renderGrid();
+  showConfirm(`Remove unit ${u.callsign}?`, () => {
+    units = units.filter(u => u.id !== id);
+    addLog(`${u.callsign} removed from board.`);
+    save();
+    renderGrid();
+  });
 }
 
 function openModal(id){
@@ -1353,7 +1417,7 @@ function saveModal(){
   const id = document.getElementById('edit-id').value;
   const callsign = document.getElementById('f-callsign').value.trim();
   if(!callsign){
-    alert('Enter a call sign first.');
+    showAlert('Enter a call sign first.');
     return;
   }
   const type = document.getElementById('f-type').value;
@@ -1404,11 +1468,12 @@ document.getElementById('filter-type').addEventListener('change', renderGrid);
 document.getElementById('filter-status').addEventListener('change', renderGrid);
 document.getElementById('clear-all-btn').addEventListener('click', () => {
   if(units.length === 0) return;
-  if(!confirm('Remove all units from the board? This does not clear the activity log.\n\nHave you exported or printed anything you need from this board first? This cannot be undone.')) return;
-  units = [];
-  addLog('Board cleared — all units removed.');
-  save();
-  renderGrid();
+  showConfirm('Remove all units from the board? This does not clear the activity log.\n\nHave you exported or printed anything you need from this board first? This cannot be undone.', () => {
+    units = [];
+    addLog('Board cleared — all units removed.');
+    save();
+    renderGrid();
+  });
 });
 document.getElementById('copy-log-btn').addEventListener('click', () => {
   const text = log.map(e => `[${e.t}] ${e.text}`).join('\n');
@@ -1444,11 +1509,12 @@ document.getElementById('download-log-btn').addEventListener('click', () => {
 });
 document.getElementById('clear-log-btn').addEventListener('click', () => {
   if(log.length === 0) return;
-  if(!confirm('Permanently erase the entire activity log?\n\nHave you exported the board or generated your ICS-309 first, if you need a record of this? This cannot be undone.')) return;
-  log = [];
-  shiftLogStart = 0;
-  save();
-  renderLog();
+  showConfirm('Permanently erase the entire activity log?\n\nHave you exported the board or generated your ICS-309 first, if you need a record of this? This cannot be undone.', () => {
+    log = [];
+    shiftLogStart = 0;
+    save();
+    renderLog();
+  });
 });
 
 document.getElementById('export-btn').addEventListener('click', () => {
@@ -1478,31 +1544,38 @@ document.getElementById('import-file').addEventListener('change', (e) => {
     try{
       data = JSON.parse(reader.result);
     }catch(err){
-      alert('That file is not a valid backup — could not read it.');
+      showAlert('That file is not a valid backup — could not read it.');
       e.target.value = '';
       return;
     }
     if(!Array.isArray(data.units) || !Array.isArray(data.log)){
-      alert('That file does not look like a Legio XIII backup.');
+      showAlert('That file does not look like a Baseline Terminal backup.');
       e.target.value = '';
       return;
     }
-    if(!confirm('Import this backup? It will replace everything currently on the board and in the log.\n\nHave you exported or printed anything you need from the current board first? This cannot be undone.')) {
+    showConfirm('Import this backup? It will replace everything currently on the board and in the log.\n\nHave you exported or printed anything you need from the current board first? This cannot be undone.', () => {
+      units = data.units;
+      log = data.log;
+      notableLog = Array.isArray(data.notableLog) ? data.notableLog : [];
+
+      const finishImport = () => {
+        save();
+        renderGrid();
+        renderLog();
+        renderNotable();
+        e.target.value = '';
+      };
+
+      showConfirm('Mark this import as the start of a new shift?\n\nRecommended for shift handoffs — your ICS-214/309 exports will only include entries logged from this point forward, not the imported history.', () => {
+        shiftLogStart = log.length;
+        shiftNotableStart = notableLog.length;
+        finishImport();
+      }, () => {
+        finishImport();
+      });
+    }, () => {
       e.target.value = '';
-      return;
-    }
-    units = data.units;
-    log = data.log;
-    notableLog = Array.isArray(data.notableLog) ? data.notableLog : [];
-    if(confirm('Mark this import as the start of a new shift?\n\nRecommended for shift handoffs — your ICS-214/309 exports will only include entries logged from this point forward, not the imported history.')){
-      shiftLogStart = log.length;
-      shiftNotableStart = notableLog.length;
-    }
-    save();
-    renderGrid();
-    renderLog();
-    renderNotable();
-    e.target.value = '';
+    });
   };
   reader.readAsText(file);
 });
@@ -1517,7 +1590,7 @@ document.getElementById('notable-add-btn').addEventListener('click', () => {
   const el = document.getElementById('notable-text');
   const text = el.value.trim();
   if(!text){
-    alert('Enter a narrative entry first.');
+    showAlert('Enter a narrative entry first.');
     return;
   }
   addNotable(text);
@@ -1529,11 +1602,12 @@ document.getElementById('notable-text').addEventListener('keydown', (e) => {
 });
 document.getElementById('notable-clear-btn').addEventListener('click', () => {
   if(notableLog.length === 0) return;
-  if(!confirm('Permanently erase all Notable Activity entries?\n\nHave you exported the board or generated your ICS-214 first, if you need a record of this? This cannot be undone.')) return;
-  notableLog = [];
-  shiftNotableStart = 0;
-  save();
-  renderNotable();
+  showConfirm('Permanently erase all Notable Activity entries?\n\nHave you exported the board or generated your ICS-214 first, if you need a record of this? This cannot be undone.', () => {
+    notableLog = [];
+    shiftNotableStart = 0;
+    save();
+    renderNotable();
+  });
 });
 
 /* ================= Unit Map ================= */
@@ -1732,7 +1806,7 @@ document.getElementById('custom-image-file').addEventListener('change', (e) => {
     renderCustomImageDisplay();
     const persisted = await saveCustomMapImage(customMapImage);
     if(!persisted){
-      alert('This image works for the current session, but couldn\'t be saved for future ones (your device may be low on storage, or IndexedDB may be unavailable/restricted). It won\'t survive a page reload unless that\'s resolved.');
+      showAlert('This image works for the current session, but couldn\'t be saved for future ones (your device may be low on storage, or IndexedDB may be unavailable/restricted). It won\'t survive a page reload unless that\'s resolved.');
     }
     e.target.value = '';
   };
@@ -1844,14 +1918,14 @@ document.getElementById('map-unit-select').addEventListener('change', (e) => {
 
 document.getElementById('map-locate-btn').addEventListener('click', () => {
   if(!navigator.geolocation){
-    alert('Location is not available on this device/browser.');
+    showAlert('Location is not available on this device/browser.');
     return;
   }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       if(unitMap) unitMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
     },
-    () => alert('Could not get your location.')
+    () => showAlert('Could not get your location.')
   );
 });
 
@@ -2290,8 +2364,9 @@ function closeIcsModal(){
 }
 
 document.getElementById('start-shift-btn').addEventListener('click', () => {
-  if(!confirm('Start a new shift now?\n\nEntries logged so far will be excluded from future ICS-214/309 exports until you start another new shift. Nothing is deleted.')) return;
-  startNewShift();
+  showConfirm('Start a new shift now?\n\nEntries logged so far will be excluded from future ICS-214/309 exports until you start another new shift. Nothing is deleted.', () => {
+    startNewShift();
+  });
 });
 document.getElementById('ics214-btn').addEventListener('click', openIcsModal);
 document.getElementById('ics-cancel').addEventListener('click', closeIcsModal);
@@ -2351,7 +2426,7 @@ document.getElementById('ics309-generate').addEventListener('click', () => {
   const shiftLog = log.slice(shiftLogStart);
   const radioCount = shiftLog.filter(e => e.radio).length;
   if(radioCount === 0){
-    alert('No radio traffic has been logged yet this shift — nothing to put on a communications log.');
+    showAlert('No radio traffic has been logged yet this shift — nothing to put on a communications log.');
     return;
   }
   const now = new Date();
@@ -2423,7 +2498,7 @@ document.getElementById('edit-entry-save').addEventListener('click', () => {
   const newTime = document.getElementById('edit-entry-time').value.trim();
   const newText = document.getElementById('edit-entry-text').value.trim();
   if(!newTime || !newText){
-    alert('Time and text can\'t be blank.');
+    showAlert('Time and text can\'t be blank.');
     return;
   }
   const arr = editEntryArrayName === 'log' ? log : notableLog;
@@ -2440,8 +2515,57 @@ document.getElementById('edit-entry-save').addEventListener('click', () => {
 
 /* ================= Keyboard shortcuts ================= */
 
+/* ================= Custom alert/confirm dialogs ================= */
+
+let dialogConfirmCallback = null;
+let dialogCancelCallback = null;
+
+function showAlert(message){
+  document.getElementById('dialog-message').textContent = message;
+  document.getElementById('dialog-cancel-btn').style.display = 'none';
+  document.getElementById('dialog-ok-btn').textContent = 'OK';
+  dialogConfirmCallback = null;
+  dialogCancelCallback = null;
+  document.getElementById('dialog-overlay').classList.add('show');
+}
+
+function showConfirm(message, onConfirm, onCancel){
+  document.getElementById('dialog-message').textContent = message;
+  document.getElementById('dialog-cancel-btn').style.display = 'inline-block';
+  document.getElementById('dialog-ok-btn').textContent = 'Confirm';
+  dialogConfirmCallback = onConfirm;
+  dialogCancelCallback = onCancel || null;
+  document.getElementById('dialog-overlay').classList.add('show');
+}
+
+function closeDialog(){
+  document.getElementById('dialog-overlay').classList.remove('show');
+  dialogConfirmCallback = null;
+  dialogCancelCallback = null;
+}
+
+document.getElementById('dialog-ok-btn').addEventListener('click', () => {
+  const cb = dialogConfirmCallback;
+  closeDialog();
+  if(cb) cb();
+});
+document.getElementById('dialog-cancel-btn').addEventListener('click', () => {
+  const cb = dialogCancelCallback;
+  closeDialog();
+  if(cb) cb();
+});
+document.getElementById('dialog-overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'dialog-overlay'){
+    const cb = dialogCancelCallback;
+    closeDialog();
+    if(cb) cb();
+  }
+});
+
+/* ================= end Custom alert/confirm dialogs ================= */
+
 function anyModalOpen(){
-  return ['overlay','ics-overlay','ics309-overlay','shortcuts-overlay','edit-entry-overlay']
+  return ['overlay','ics-overlay','ics309-overlay','shortcuts-overlay','edit-entry-overlay','dialog-overlay']
     .some(id => document.getElementById(id).classList.contains('show'));
 }
 
@@ -2451,6 +2575,7 @@ function closeWhicheverModalIsOpen(){
   else if(document.getElementById('ics309-overlay').classList.contains('show')) closeIcs309Modal();
   else if(document.getElementById('shortcuts-overlay').classList.contains('show')) closeShortcuts();
   else if(document.getElementById('edit-entry-overlay').classList.contains('show')) closeEditEntry();
+  else if(document.getElementById('dialog-overlay').classList.contains('show')) closeDialog();
 }
 
 function openShortcuts(){
